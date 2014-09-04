@@ -1,0 +1,113 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="codec_info.c" />
+    <ClCompile Include="dec_main.c" />
+    <ClCompile Include="enc_main.c" />
+    <ClCompile Include="jpg_main.c" />
+    <ClCompile Include="main.c" />
+    <ClCompile Include="NX_Semaphore.c" />
+    <ClCompile Include="queue.c" />
+    <ClCompile Include="theoraparser\src\bitpack.c" />
+    <ClCompile Include="theoraparser\src\decode.c" />
+    <ClCompile Include="theoraparser\src\info.c" />
+    <ClCompile Include="theoraparser\src\internal.c" />
+    <ClCompile Include="theoraparser\src\state.c" />
+    <ClCompile Include="theoraparser\src\theora_parser.c" />
+    <ClCompile Include="trans_main.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="codec_info.h" />
+    <ClInclude Include="NX_Semaphore.h" />
+    <ClInclude Include="queue.h" />
+    <ClInclude Include="theoraparser\include\bitpack.h" />
+    <ClInclude Include="theoraparser\include\codec.h" />
+    <ClInclude Include="theoraparser\include\common.h" />
+    <ClInclude Include="theoraparser\include\decint.h" />
+    <ClInclude Include="theoraparser\include\dequant.h" />
+    <ClInclude Include="theoraparser\include\huffdec.h" />
+    <ClInclude Include="theoraparser\include\huffman.h" />
+    <ClInclude Include="theoraparser\include\internal.h" />
+    <ClInclude Include="theoraparser\include\ocintrin.h" />
+    <ClInclude Include="theoraparser\include\state.h" />
+    <ClInclude Include="theoraparser\include\theoradec.h" />
+    <ClInclude Include="theoraparser\include\theora_parser.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile" />
+    <None Include="theoraparser\Makefile" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{CD5F65F1-8D72-4435-A0BB-E3201FCB7B23}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>vpu_test</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../library/include;./;Z:\devel\nxp4330\tools\arm-cortex_a9-eabi-4.6.3-eglibc-2.16\arm-cortex_a9-linux-gnueabi\sysroot\usr\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../library/include;./;Z:\devel\nxp4330\tools\arm-cortex_a9-eabi-4.6.3-eglibc-2.16\arm-cortex_a9-linux-gnueabi\sysroot\usr\include</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

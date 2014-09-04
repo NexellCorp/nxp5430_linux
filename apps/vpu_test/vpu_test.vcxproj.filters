@@ -1,0 +1,120 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="소스 파일">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="헤더 파일">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="리소스 파일">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="theoraparser">
+      <UniqueIdentifier>{a8944776-84ee-4184-bfff-1362cbb1af53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="theoraparser\include">
+      <UniqueIdentifier>{13943597-f28f-4bce-8b8c-ae6fb328b016}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="codec_info.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="dec_main.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="enc_main.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="jpg_main.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="main.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="NX_Semaphore.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="queue.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="trans_main.c">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="theoraparser\src\state.c">
+      <Filter>theoraparser</Filter>
+    </ClCompile>
+    <ClCompile Include="theoraparser\src\decode.c">
+      <Filter>theoraparser</Filter>
+    </ClCompile>
+    <ClCompile Include="theoraparser\src\internal.c">
+      <Filter>theoraparser</Filter>
+    </ClCompile>
+    <ClCompile Include="theoraparser\src\theora_parser.c">
+      <Filter>theoraparser</Filter>
+    </ClCompile>
+    <ClCompile Include="theoraparser\src\bitpack.c">
+      <Filter>theoraparser</Filter>
+    </ClCompile>
+    <ClCompile Include="theoraparser\src\info.c">
+      <Filter>theoraparser</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="codec_info.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="NX_Semaphore.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="queue.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\bitpack.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\codec.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\common.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\decint.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\dequant.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\huffdec.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\huffman.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\ocintrin.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\state.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\internal.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\theora_parser.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+    <ClInclude Include="theoraparser\include\theoradec.h">
+      <Filter>theoraparser\include</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile" />
+    <None Include="theoraparser\Makefile">
+      <Filter>theoraparser</Filter>
+    </None>
+  </ItemGroup>
+</Project>
