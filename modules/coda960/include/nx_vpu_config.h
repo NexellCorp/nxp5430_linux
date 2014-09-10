@@ -20,7 +20,12 @@
 
 //	VPU Internal SRAM
 #define	VPU_SRAM_PHYSICAL_BASE	0xFFFF0000
+#if defined (CONFIG_ARCH_NXP5430)
+#define VPU_SRAM_SIZE			(0x10000)
+#endif
+#if defined (CONFIG_ARCH_NXP4330)
 #define VPU_SRAM_SIZE			(0x8000)
+#endif
 
 //	VPU Clock Gating
 //#define	ENABLE_CLOCK_GATING	

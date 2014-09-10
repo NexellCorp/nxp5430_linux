@@ -337,7 +337,7 @@ typedef struct tagVpuDecInfo
 
 	//	Frame Buffer Information ( Instance Global )
 	int numFrameBuffer;
-	NX_VID_MEMORY_INFO frameBuffer[MAX_REG_FRAME];	//	MAX REG Frame Buffer == 22
+	NX_VID_MEMORY_INFO frameBuffer[MAX_REG_FRAME];	//	MAX REG Frame Buffer == 31
 	SecAxiInfo secAxiInfo;			//	Secondary Working Buffer Information
 	int cacheConfig;				//	for CMD_SET_FRAME_CACHE_CONFIG register
 

@@ -112,19 +112,13 @@ void	NX_LinearFree( void *handle, unsigned int phyAddr, unsigned int virAddr )
 //				Driver Layer Mutex
 //
 
-typedef struct tagLinuxMutex{
-	struct mutex			linux_mutex;
-	struct lock_class_key	key;
-}LinuxMutex;
 
-NX_MutexHandle DrvCreateMutex( const char *name )
+void DrvInitMutex( NX_MutexHandle handle, const char *name )
 {
-	LinuxMutex *handle = (LinuxMutex *)NX_DrvMalloc( sizeof( LinuxMutex ) );
 	__mutex_init( &handle->linux_mutex, name, &handle->key );
-	return (NX_MutexHandle)handle;
 }
 
-void DrvDestroyMutex( NX_MutexHandle handle )
+void DrvCloseMutex( NX_MutexHandle handle )
 {
 	LinuxMutex *hMutex = (LinuxMutex *)handle;
 	mutex_destroy( &hMutex->linux_mutex );
