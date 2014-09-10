@@ -1875,7 +1875,7 @@ static int FillBuffer(NX_VPU_INST_HANDLE handle, unsigned char *stream, int size
 	if( bufSize < vWriteOffset || bufSize < vReadOffset )
 	{
 		printk("%s, StreamBuffer(Addr=x0%08x, size=%d), InBuffer(Addr=x0%08x, size=%d) vWriteOffset = %d, vReadOffset = %d\n",
-			__func__, pDecInfo->strmBufVirAddr, pDecInfo->strmBufSize, stream, size, vWriteOffset, vReadOffset );
+			__func__, pDecInfo->strmBufVirAddr, pDecInfo->strmBufSize, (int)stream, size, vWriteOffset, vReadOffset );
 		return -1;
 	}
 
@@ -2410,7 +2410,7 @@ static NX_VPU_RET VPU_DecRegisterFrameBufCommand( NX_VpuCodecInst *pInst, VPU_DE
 	FUNCIN();
 
 	NX_DrvMemset( frameAddr, 0, sizeof(frameAddr) );
-	NX_DrvMemset( colMvAddr, 0, sizeof(frameAddr) );
+	NX_DrvMemset( colMvAddr, 0, sizeof(colMvAddr) );
 
 	SetTiledMapType(VPU_LINEAR_FRAME_MAP, bufferStride, pInfo->cbcrInterleave);
 

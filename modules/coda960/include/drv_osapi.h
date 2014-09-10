@@ -20,6 +20,7 @@ extern "C"{
 #if ( defined(__linux) || defined(__LINUX__) || defined(linux) || defined(ANDROID) )
 	#if defined(__KERNEL__)
 		#include <linux/kernel.h>
+		#include <linux/mutex.h>
 		#define	nx_printf		printk
 	#endif	//	__KERNEL__
 #else	
@@ -91,10 +92,23 @@ void	NX_LinearFree( void *handle, unsigned int phyAddr, unsigned int virAddr );
 //				Driver Layer Mutex
 //
 
-typedef	void *	NX_MutexHandle;
 
-NX_MutexHandle	DrvCreateMutex( const char *name );
-void	DrvDestroyMutex( NX_MutexHandle handle );
+#if ( defined(__linux) || defined(__LINUX__) || defined(linux) || defined(ANDROID) )
+	#if defined(__KERNEL__)
+		typedef struct tagLinuxMutex	*NX_MutexHandle;
+		typedef struct tagLinuxMutex{
+			struct mutex			linux_mutex;
+			struct lock_class_key	key;
+		}LinuxMutex;
+	#endif	//	__KERNEL__
+#else	
+	typedef	void *	NX_MutexHandle;
+	void nx_printf( char *fmt,... );
+#endif	//	__linux || linux || ANDROID
+
+
+void	DrvInitMutex( NX_MutexHandle handle, const char *name );
+void	DrvCloseMutex( NX_MutexHandle handle );
 void	DrvMutexLock( NX_MutexHandle handle );
 void	DrvMutexUnlock( NX_MutexHandle handle );
 
