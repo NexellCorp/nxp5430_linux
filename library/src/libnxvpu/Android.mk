@@ -4,7 +4,7 @@ include $(CLEAR_VARS)
 # LOCAL_PRELINK_MODULE := false
 
 NX_PYROPE_INCLUDE := $(TOP)/hardware/nexell/pyrope/include
-NX_LINUX_INCLUDE  := $(TOP)/linux/pyrope/library/include
+NX_LINUX_INCLUDE  := $(TOP)/linux/nxp5430/library/include
 
 LOCAL_SHARED_LIBRARIES :=	\
 	liblog \

@@ -9,7 +9,7 @@ LOCAL_SHARED_LIBRARIES :=	\
 
 LOCAL_C_INCLUDES += system/core/include/ion \
 					$(TOP)/hardware/nexell/pyrope/include \
-					$(TOP)/linux/pyrope/library/include
+					$(TOP)/linux/nxp5430/library/include
 
 LOCAL_CFLAGS += 
 
