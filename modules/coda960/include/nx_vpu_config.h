@@ -28,8 +28,8 @@
 #endif
 
 //	VPU Clock Gating
-//#define	ENABLE_CLOCK_GATING	
-//#define	ENABLE_POWER_SAVING	
+#define	ENABLE_CLOCK_GATING	
+#define	ENABLE_POWER_SAVING	
 
 
 #define	NX_DBG_INFO			1

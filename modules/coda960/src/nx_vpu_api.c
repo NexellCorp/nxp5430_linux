@@ -126,6 +126,104 @@ static int swap_endian(unsigned char *data, int len);
 
 #define	POWER_PMU_VPU_MASK		0x00000002
 
+#if defined (CONFIG_ARCH_NXP5430)
+#define	TIEOFF_REG131			0xF001120C
+#define	VPU_ASYNCXUI1_CACTIVE	(1<<17)
+#define	VPU_ASYNCXUI1_CSYSACK	(1<<16)
+
+#define	VPU_ASYNCXUI0_CACTIVE	(1<<15)
+#define	VPU_ASYNCXUI0_CSYSACK	(1<<14)
+
+#define	TIEOFF_REG69			0xF0011114
+#define	VPU_ASYNCXUI1_CSYSREQ	(1<<4)
+#define	VPU_ASYNCXUI0_CSYSREQ	(1<<3)
+
+//
+//		Async XUI Power Down
+//
+//	Step 1. Waiting until CACTIVE to High
+//	Step 2. Set CSYSREQ to Low
+//	Step 3. Waiting until CSYSACK to Low
+static void NX_ASYNCXUI_PowerDown(void)
+{
+	int32_t tmpVal;
+	FUNCIN();
+
+	//	Apply To Async XUI 0
+
+	//	Step 1. Waiting until CACTIVE to High
+	do{
+		tmpVal = VpuReadReg(TIEOFF_REG131);
+	}while(!(tmpVal&VPU_ASYNCXUI0_CACTIVE));
+
+	//	Step 2. Set CSYSREQ to Low
+	tmpVal = VpuReadReg(TIEOFF_REG69);
+	tmpVal &= (~VPU_ASYNCXUI0_CSYSREQ);
+	VpuWriteReg(TIEOFF_REG69, tmpVal);
+
+	//	Step 3. Waiting until CSYSACK to Low
+	do{
+		tmpVal = VpuReadReg(TIEOFF_REG131);
+	}while(tmpVal&VPU_ASYNCXUI0_CSYSACK);
+
+
+	//	Apply To Async XUI 1
+
+	//	Step 1. Waiting until CACTIVE to High
+	do{
+		tmpVal = VpuReadReg(TIEOFF_REG131);
+	}while(!(tmpVal&VPU_ASYNCXUI1_CACTIVE));
+
+	//	Step 2. Set CSYSREQ to Low
+	tmpVal = VpuReadReg(TIEOFF_REG69);
+	tmpVal &= (~VPU_ASYNCXUI1_CSYSREQ);
+	VpuWriteReg(TIEOFF_REG69, tmpVal);
+
+	//	Step 3. Waiting until CSYSACK to Low
+	do{
+		tmpVal = VpuReadReg(TIEOFF_REG131);
+	}while(tmpVal&VPU_ASYNCXUI1_CSYSACK);
+	FUNCOUT();
+}
+
+//
+//		Async XUI Power Up
+//
+//	Step 1. Set CSYSREQ to High
+//	Step 2. Waiting until CSYSACK to High
+static void NX_ASYNCXUI_PowerUp(void)
+{
+	int32_t tmpVal;
+
+	FUNCIN();
+	//	Apply To Async XUI 0
+
+	//	Step 1. Set CSYSREQ to High
+	tmpVal = VpuReadReg(TIEOFF_REG69);
+	tmpVal |= VPU_ASYNCXUI0_CSYSREQ;
+	VpuWriteReg(TIEOFF_REG69, tmpVal);
+
+	//	Step 2. Waiting until CSYSACK to High
+	do{
+		tmpVal = VpuReadReg(TIEOFF_REG131);
+	}while(!(tmpVal&VPU_ASYNCXUI0_CSYSACK));
+
+	//	Apply To Async XUI 1
+
+	//	Step 1. Set CSYSREQ to High
+	tmpVal = VpuReadReg(TIEOFF_REG69);
+	tmpVal |= VPU_ASYNCXUI1_CSYSREQ;
+	VpuWriteReg(TIEOFF_REG69, tmpVal);
+
+	//	Step 2. Waiting until CSYSACK to High
+	do{
+		tmpVal = VpuReadReg(TIEOFF_REG131);
+	}while(!(tmpVal&VPU_ASYNCXUI1_CSYSACK));
+	FUNCOUT();
+}
+
+#endif
+
 void NX_VPU_HwOn(void)
 {
 	unsigned int tmpVal;
@@ -172,6 +270,7 @@ void NX_VPU_HwOn(void)
 	NX_VPU_Clock( 1 );
 
 #if defined (CONFIG_ARCH_NXP5430)
+	NX_ASYNCXUI_PowerUp();
 	//	Release Reset
 	nxp_soc_peri_reset_exit(RESET_ID_CODA_P);			//	62
 	nxp_soc_peri_reset_exit(RESET_ID_CODA_A);			//	61
@@ -195,6 +294,24 @@ void NX_VPU_HWOff(void)
 	if( gstIsVPUOn )
 	{
 		unsigned int tmpVal;
+
+#if defined (CONFIG_ARCH_NXP5430)
+		NX_ASYNCXUI_PowerDown();
+#endif
+
+#if defined (CONFIG_ARCH_NXP5430)
+		//	H/W Reset
+		nxp_soc_peri_reset_enter(RESET_ID_CODA_C);			//	63
+		nxp_soc_peri_reset_enter(RESET_ID_CODA_A);			//	61
+		nxp_soc_peri_reset_enter(RESET_ID_CODA_P);			//	62
+#endif
+#if defined (CONFIG_ARCH_NXP4430)
+		//	H/W Reset
+		nxp_soc_rsc_enter(RESET_ID_CODA_C);			//	63
+		nxp_soc_rsc_enter(RESET_ID_CODA_A);			//	61
+		nxp_soc_rsc_enter(RESET_ID_CODA_P);			//	62
+#endif
+
 		NX_DbgMsg( DBG_POWER, ("NX_VPU_HWOff() ++\n") );
 
 		//	Enter Coda Reset State

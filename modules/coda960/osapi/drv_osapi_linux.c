@@ -122,7 +122,6 @@ void DrvCloseMutex( NX_MutexHandle handle )
 {
 	LinuxMutex *hMutex = (LinuxMutex *)handle;
 	mutex_destroy( &hMutex->linux_mutex );
-	NX_DrvFree( handle );
 }
 
 void DrvMutexLock( NX_MutexHandle handle )
