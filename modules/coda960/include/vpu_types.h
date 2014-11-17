@@ -15,45 +15,46 @@ typedef struct
 {
 	//	Input Arguments
 	int codecStd;
-	int isEncoder;			//	Encoder
-	int mp4Class;			//	Mpeg4 Class
-	int chromaInterleave;	//	CbCr Interleaved
+	int isEncoder;			// Encoder
+	int mp4Class;			// Mpeg4 Class
+	int chromaInterleave;	// CbCr Interleaved
 
 	NX_MEMORY_INFO	instanceBuf;
 	NX_MEMORY_INFO	streamBuf;
 
 	//	Output Arguments
-	int instIndex;			//	Instance Index
+	int instIndex;			// Instance Index
 } VPU_OPEN_ARG;
 
 typedef struct
 {
-	//
-	int srcWidth;			//	source image's width
-	int srcHeight;			//	source image's height
+	// input image size
+	int srcWidth;			// source image's width
+	int srcHeight;			// source image's height
 
 	//	Set Stream Buffer Handle
 	unsigned int strmBufVirAddr;
 	unsigned int strmBufPhyAddr;
 	int strmBufSize;
 
-	int frameRateNum;		//	frame rate
+	int frameRateNum;		// frame rate
 	int frameRateDen;
-	int gopSize;			//	group of picture size
+	int gopSize;			// group of picture size
 
 	//	Rate Control
-	int	enableRC;			//	Enable Rate Control
-	int bitrate;			//	Bitrate
-	int rcAutoSkip;			//	Auto Skip
-	int initialDelay;		//	This vali is ignored enableRC is 0.(MAX 0x7FFF)
-							//	0 does not check Reference decoder buffer delay constraint.
-	int	vbvBufferSize;		//	Reference Decoder buffer size in bits.
-							//	This valid is ignored if enableRC is 0 or initDelay is is 0.(MAX 0x7FFFFFFF)
-	int gammaFactor;
+	int	RCModule;			// 0 : VBR, 1 : CnM RC, 2 : NX RC
+	int bitrate;			// Target Bitrate
+	int disableSkip;		// Flag of Skip frame disable
+	int initialDelay;		// This value is valid if RCModule is 1.(MAX 0x7FFF)
+							// 0 does not check Reference decoder buffer delay constraint.
+	int	vbvBufferSize;		// Reference Decoder buffer size in bytes
+							// This valid is ignored if RCModule is 1 and initialDelay is is 0.(MAX 0x7FFFFFFF)
+	int gammaFactor;		// It is valid when RCModule is 1.
 
 	//	Quantization Scale [ H.264/AVC(0~51), MPEG4(1~31) ]
-	int maxQScale;			//	Max Quantization Scale
-	int userQScale;			//	User Quantization Scale
+	int maxQP;				// Max Quantization Scale
+	int initQP;				// This value is Initial QP whne CBR. (Initial QP is computed if initQP is 0.)
+							// This value is user QP when VBR.
 
 	//	Input Buffer Chroma Interleaved
 	int chromaInterleave;	//	Input Buffer Chroma Interleaved Format
@@ -102,6 +103,8 @@ typedef union
 		int vosSize;
 		unsigned char volData[512];
 		int volSize;
+		unsigned char voData[512];
+		int voSize;
 	} mp4Header;
 	struct {
 		unsigned char spsData[512];
@@ -136,6 +139,7 @@ typedef struct
 	int frameType;					//	I, P, B, SKIP,.. etc
 	unsigned char *outStreamAddr;	//	mmapped virtual address
 	int outStreamSize;				//	Stream buffer size
+	int reconImgIdx;				// 	reconstructed image buffer index
 }VPU_ENC_RUN_FRAME_ARG;
 
 typedef struct

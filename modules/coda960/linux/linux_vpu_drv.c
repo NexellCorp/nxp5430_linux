@@ -24,7 +24,7 @@
 #include <mach/nxp5430.h>
 #endif
 
-#if defined (CONFIG_ARCH_NXP4430)
+#if defined (CONFIG_ARCH_NXP4330)
 #include <mach/nxp4330.h>
 #endif
 
@@ -447,8 +447,6 @@ static long nx_vpu_ioctl( struct file *filp, unsigned int cmd, unsigned long arg
 					pbuf[ 0],pbuf[ 1],pbuf[ 2],pbuf[ 3], pbuf[ 4],pbuf[ 5],pbuf[ 6],pbuf[ 7],
 					pbuf[ 8],pbuf[ 9],pbuf[10],pbuf[11], pbuf[12],pbuf[13],pbuf[14],pbuf[15]);
 			}
-
-			printk("[linux_vpu_drv]block = %d \n", seqArg.enablePostFilter);
 
 			if( VPU_RET_OK != (vpuRet = NX_VpuDecSetSeqInfo( hInst, &seqArg )) )
 			{

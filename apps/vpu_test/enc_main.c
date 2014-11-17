@@ -163,9 +163,9 @@ int main( int argc, char *argv[] )
 
 	//	Rate Control
 	encInitParam.enableRC = 1;		//	Enable Rate Control
-	encInitParam.enableSkip = 0;	//	Enable Skip
-	encInitParam.maxQScale = 51;	//	Max Qunatization Scale
-	encInitParam.userQScale = 10;	//	Default Encoder API ( enableRC == 0 )
+	encInitParam.disableSkip = 0;	//	Enable Skip
+	encInitParam.maximumQp = 51;	//	Max Qunatization Scale
+	encInitParam.initialQp = 10;	//	Default Encoder API ( enableRC == 0 )
 	encInitParam.enableAUDelimiter = 1;	//	Enable / Disable AU Delimiter
 
 	NX_VidEncInit( hEnc, &encInitParam );

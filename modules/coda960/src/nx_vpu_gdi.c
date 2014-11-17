@@ -655,7 +655,7 @@ NX_VPU_RET ConfigEncSecAXI(int codStd, SecAxiInfo *sa, int width, int height )
 	}
 
 	//	Intra Prediction,( H.264 Only )
-	if (sa->useIpEnable && CODEC_STD_AVC == codStd)
+	if (sa->useIpEnable /*&& CODEC_STD_AVC == codStd*/)
 	{
 		sa->bufIpAcDcUse = sramPhyAddr + offset;
 		offset = offset+ (MbNumX * 64);

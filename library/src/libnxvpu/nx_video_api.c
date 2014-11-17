@@ -29,7 +29,7 @@
 #define	NX_DTAG		"[VPU|API] "		//
 #include "api_osapi.h"
 #define	DBG_BUF_ALLOC		0
-#define	DBG_ENC_OUT			1
+#define	DBG_ENC_OUT			0
 #define DBG_BUF_INFO		0
 #define	DBG_VBS				0
 #define	DBG_WARNING			1
@@ -58,40 +58,44 @@ static uint64_t DecoderGetTimeStamp( NX_VID_DEC_HANDLE hDec, int32_t iIndex, int
 
 struct NX_VIDEO_ENC_INFO
 {
-	//	open information
-	int32_t hEncDrv;		                    //	Device Driver Handle
-	int32_t codecMode;		                    //	(AVC_ENC = 0x10 / MP4_ENC = 0x12 / NX_JPEG_ENC=0x20 )
-	int32_t instIndex;		                    //	Instance Index
+	// open information
+	int32_t hEncDrv;		                    // Device Driver Handle
+	int32_t codecMode;		                    // (AVC_ENC = 0x10 / MP4_ENC = 0x12 / NX_JPEG_ENC=0x20 )
+	int32_t instIndex;		                    // Instance Index
 
-	NX_MEMORY_HANDLE hInstanceBuf;				//	Encoder Instance Memory Buffer
+	NX_MEMORY_HANDLE hInstanceBuf;				// Encoder Instance Memory Buffer
 
-	//	Frame Buffer Information ( for Initialization )
-	int32_t refChromaInterleave;				//	Reconstruct & Referernce Buffer Chroma Interleaved
-	NX_VID_MEMORY_HANDLE hRefReconBuf[2];		//	Reconstruct & Referernce Buffer Information
-	NX_MEMORY_HANDLE hSubSampleBuf[2];			//	Sub Sample Buffer Address
-	NX_MEMORY_HANDLE hBitStreamBuf;				//	Bit Stream Buffer
+	// Frame Buffer Information ( for Initialization )
+	int32_t refChromaInterleave;				// Reconstruct & Referernce Buffer Chroma Interleaved
+	NX_VID_MEMORY_HANDLE hRefReconBuf[2];		// Reconstruct & Referernce Buffer Information
+	NX_MEMORY_HANDLE hSubSampleBuf[2];			// Sub Sample Buffer Address
+	NX_MEMORY_HANDLE hBitStreamBuf;				// Bit Stream Buffer
 	int32_t isInitialized;
 
-	//	Initialize Output Informations
+	// Initialize Output Informations
 	VPU_ENC_GET_HEADER_ARG seqInfo;
 
-	//	Encoder Options ( Default CBR Mode )
+	// Encoder Options ( Default CBR Mode )
 	int32_t width;
 	int32_t height;
-	int32_t gopSize;							//	Group Of Pictures' Size
-	int32_t frameRateNum;						//	Framerate numerator
-	int32_t frameRateDen;						//	Framerate denominator
-	int32_t bitRate;							//	BitRate
-	int32_t enableSkip;							//	Enable skip frame
+	int32_t gopSize;							// Group Of Pictures' Size
+	int32_t frameRateNum;						// Framerate numerator
+	int32_t frameRateDen;						// Framerate denominator
+	int32_t bitRate;							// BitRate
+	int32_t enableSkip;							// Enable skip frame
 
-	int32_t userQScale;							//	Default User Qunatization Scale
+	int32_t userQScale;							// Default User Qunatization Scale
 
-	//	JPEG Specific
+	uint32_t GopFrmCnt;							// GOP frame counter
+
+	// JPEG Specific
 	uint32_t frameIndex;
 	int32_t rstIntval;
+
+	void *hRC;									// Rate Control Handle
 };
 
-NX_VID_ENC_HANDLE NX_VidEncOpen( int32_t codecType, int32_t *piInstanceIdx )
+NX_VID_ENC_HANDLE NX_VidEncOpen( VID_TYPE_E eCodecType, int32_t *piInstanceIdx )
 {
 	VPU_OPEN_ARG openArg;
 	int32_t ret;
@@ -111,7 +115,7 @@ NX_VID_ENC_HANDLE NX_VidEncOpen( int32_t codecType, int32_t *piInstanceIdx )
 		goto ERROR_EXIT;
 	}
 
-	switch( codecType )
+	switch( eCodecType )
 	{
 		case NX_MP4_ENC:
 			openArg.codecStd = CODEC_STD_MPEG4;
@@ -126,7 +130,7 @@ NX_VID_ENC_HANDLE NX_VidEncOpen( int32_t codecType, int32_t *piInstanceIdx )
 			openArg.codecStd = CODEC_STD_H263;
 			break;
 		default:
-			NX_ErrMsg( ("Invalid codec type (%d)!!!\n", codecType) );
+			NX_ErrMsg( ("Invalid codec type (%d)!!!\n", eCodecType) );
 			goto ERROR_EXIT;
 	}
 
@@ -149,7 +153,7 @@ NX_VID_ENC_HANDLE NX_VidEncOpen( int32_t codecType, int32_t *piInstanceIdx )
 	}
 
 	hEnc->instIndex = openArg.instIndex;
-	hEnc->codecMode = codecType;
+	hEnc->codecMode = eCodecType;
 	hEnc->refChromaInterleave = RECON_CHROMA_INTERLEAVED;
 
 	if ( piInstanceIdx )
@@ -174,10 +178,17 @@ VID_ERROR_E NX_VidEncClose( NX_VID_ENC_HANDLE hEnc )
 {
 	int32_t ret;
 	FUNC_IN();
+
 	if( !hEnc )
 	{
 		NX_ErrMsg( ("Invalid encoder handle or driver handle!!!\n") );
 		return VID_ERR_PARAM;
+	}
+
+	if ( hEnc->hRC )
+	{
+		free( hEnc->hRC );
+		hEnc->hRC = NULL;
 	}
 
 	if( hEnc->hEncDrv <= 0 )
@@ -236,6 +247,11 @@ VID_ERROR_E NX_VidEncInit( NX_VID_ENC_HANDLE hEnc, NX_VID_ENC_INIT_PARAM *pstPar
 
 	hEnc->width = pstParam->width;
 	hEnc->height = pstParam->height;
+	hEnc->gopSize = pstParam->gopSize;
+	hEnc->frameRateNum = pstParam->fpsNum;
+	hEnc->frameRateDen = pstParam->fpsDen;
+	hEnc->bitRate = pstParam->bitrate;
+	hEnc->enableSkip = !pstParam->disableSkip;
 
 	if( 0 != AllocateEncoderMemory( hEnc ) )
 	{
@@ -263,30 +279,49 @@ VID_ERROR_E NX_VidEncInit( NX_VID_ENC_HANDLE hEnc, NX_VID_ENC_INIT_PARAM *pstPar
 		seqArg.frameRateDen = pstParam->fpsDen;
 
 		//	Rate Control
-		seqArg.enableRC = pstParam->enableRC;
-		if ( seqArg.enableRC )
+		if ( pstParam->enableRC )
 		{
-    		seqArg.bitrate = pstParam->bitrate;
-    		seqArg.rcAutoSkip = pstParam->enableSkip;
-			seqArg.initialDelay = pstParam->RCDelay;
-			seqArg.vbvBufferSize = pstParam->rcVbvSize;
-			seqArg.gammaFactor = ( pstParam->gammaFactor ) ? ( pstParam->gammaFactor ) : ((int)(0.75 * 32768));
+			if (pstParam->RCAlgorithm == 1)
+			{
+				seqArg.RCModule = 2;
+	    		seqArg.bitrate = 0;
+	    		seqArg.disableSkip = 0;
+				seqArg.initialDelay = 0;
+				seqArg.vbvBufferSize = 0;
+				seqArg.gammaFactor = 0;
+
+				hEnc->hRC = NX_VidRateCtrlInit( hEnc->codecMode, pstParam );
+				if( hEnc->hRC == NULL ) goto ERROR_EXIT;
+			}
+			else
+			{
+				hEnc->hRC = NULL;
+				seqArg.RCModule = 1;
+	    		seqArg.bitrate = pstParam->bitrate;
+	    		seqArg.disableSkip = !pstParam->disableSkip;
+				seqArg.initialDelay = pstParam->RCDelay;
+				seqArg.vbvBufferSize = pstParam->rcVbvSize;
+				seqArg.gammaFactor = ( pstParam->gammaFactor ) ? ( pstParam->gammaFactor ) : ((int)(0.75 * 32768));
+			}
 		}
 		else
-		  hEnc->userQScale = (pstParam->userQScale == 0) ? (23) : (pstParam->userQScale);
+		{
+			seqArg.RCModule = 0;
+			hEnc->userQScale = (pstParam->initialQp == 0) ? (23) : (pstParam->initialQp);
+		}
 
-		seqArg.searchRange = pstParam->searchRange;       // ME Search Range
+		seqArg.searchRange = (hEnc->codecMode != NX_H263_ENC) ? (pstParam->searchRange) : (3);       // ME Search Range
 		seqArg.intraRefreshMbs = pstParam->numIntraRefreshMbs;
 
-    	if( hEnc->codecMode == NX_AVC_ENC )
+		if( hEnc->codecMode == NX_AVC_ENC )
 		{
 			if ( pstParam->enableAUDelimiter != 0 )
-    			seqArg.enableAUDelimiter = 1;
-			seqArg.maxQScale = ( pstParam->maxQScale > 0 ) ? ( pstParam->maxQScale ) : (51);
-    	}
+				seqArg.enableAUDelimiter = 1;
+			seqArg.maxQP = ( pstParam->maximumQp > 0 ) ? ( pstParam->maximumQp ) : (51);
+		}
 		else
 		{
-			seqArg.maxQScale = ( pstParam->maxQScale > 0 ) ? ( pstParam->maxQScale ) : (31);
+			seqArg.maxQP = ( pstParam->maximumQp > 0 ) ? ( pstParam->maximumQp ) : (31);
 		}
 	}
 	else
@@ -381,7 +416,9 @@ VID_ERROR_E NX_VidEncGetSeqInfo( NX_VID_ENC_HANDLE hEnc, uint8_t *pbySeqBuf, int
 VID_ERROR_E NX_VidEncEncodeFrame( NX_VID_ENC_HANDLE hEnc, NX_VID_ENC_IN *pstEncIn, NX_VID_ENC_OUT *pstEncOut )
 {
 	int32_t ret;
+	int32_t iFrmType = PIC_TYPE_UNKNOWN;
 	VPU_ENC_RUN_FRAME_ARG runArg;
+
 	FUNC_IN();
 	if( !hEnc )
 	{
@@ -400,10 +437,40 @@ VID_ERROR_E NX_VidEncEncodeFrame( NX_VID_ENC_HANDLE hEnc, NX_VID_ENC_IN *pstEncI
 	runArg.inImgBuffer = *(pstEncIn->pImage);
 	//runArg.changeFlag = 0;
 	//runArg.enableRc = 1;					//	N/A
-	runArg.forceIPicture = pstEncIn->forcedIFrame;
 	runArg.quantParam = pstEncIn->quantParam;
 	runArg.skipPicture = pstEncIn->forcedSkipFrame;
 	//pstEncIn->timeStamp;
+
+	//printf("forcedIFrame = %d, GopFrmCnt = %d, gopSize = %d \n", pstEncIn->forcedIFrame, hEnc->GopFrmCnt, hEnc->gopSize);
+
+	if( (pstEncIn->forcedIFrame) || (hEnc->GopFrmCnt >= hEnc->gopSize) || (hEnc->GopFrmCnt == 0) )
+	{
+		runArg.forceIPicture = 1;
+		hEnc->GopFrmCnt = 0;
+	}
+	hEnc->GopFrmCnt += 1;
+
+	if ( hEnc->hRC )
+	{
+#if 1
+		if ( runArg.forceIPicture == 1 )
+			iFrmType = PIC_TYPE_I;
+		else if ( runArg.skipPicture == 1 )
+			iFrmType = PIC_TYPE_SKIP;
+		else
+			iFrmType = PIC_TYPE_P;
+#else
+		iFrmType = PIC_TYPE_UNKNOWN;
+#endif
+		NX_VidRateCtrlGetFrameQp( hEnc->hRC, &runArg.quantParam, &iFrmType );
+
+		if ( iFrmType == PIC_TYPE_SKIP )
+			runArg.skipPicture = 1;
+
+#if 1
+		pstEncIn->quantParam = runArg.quantParam;
+#endif
+	}
 
 	ret = ioctl( hEnc->hEncDrv, IOCTL_VPU_ENC_RUN_FRAME, &runArg );
 	if( ret < 0 )
@@ -412,11 +479,17 @@ VID_ERROR_E NX_VidEncEncodeFrame( NX_VID_ENC_HANDLE hEnc, NX_VID_ENC_IN *pstEncI
 		return ret;
 	}
 
+	if ( hEnc->hRC )
+	{
+		NX_VidRateCtrlUpdate( hEnc->hRC, runArg.outStreamSize );
+	}
+
 	pstEncOut->width = hEnc->width;
 	pstEncOut->height = hEnc->height;
-	pstEncOut->frameType = runArg.frameType;
+	pstEncOut->frameType = ( iFrmType != PIC_TYPE_SKIP ) ? (runArg.frameType) : (PIC_TYPE_SKIP);
 	pstEncOut->bufSize = runArg.outStreamSize;
 	pstEncOut->outBuf = runArg.outStreamAddr;
+	pstEncOut->ReconImg = *hEnc->hRefReconBuf[runArg.reconImgIdx];
 
 //	NX_DbgMsg( DBG_ENC_OUT, ("Encoder Output : Success(outputSize = %d, isKey=%d)\n", pEncOut->bufSize, pEncOut->isKey) );
 	FUNC_OUT();
@@ -442,12 +515,31 @@ VID_ERROR_E NX_VidEncChangeParameter( NX_VID_ENC_HANDLE hEnc, NX_VID_ENC_CHG_PAR
 
 	memset( &chgArg, 0, sizeof(chgArg) );
 
+	//printf("chgFlg = %x, gopSize = %d, bitrate = %d, fps = %d/%d, maxQp = %d, skip = %d, vbv = %d, mb = %d \n", \
+	//	pstChgParam->chgFlg, pstChgParam->gopSize, pstChgParam->bitrate, pstChgParam->fpsNum, pstChgParam->fpsDen, pstChgParam->maximumQp, pstChgParam->disableSkip, pstChgParam->rcVbvSize, pstChgParam->numIntraRefreshMbs);
+
 	chgArg.chgFlg = pstChgParam->chgFlg;
 	chgArg.gopSize = pstChgParam->gopSize;
 	chgArg.bitrate = pstChgParam->bitrate;
 	chgArg.frameRateNum = pstChgParam->fpsNum;
 	chgArg.frameRateDen = pstChgParam->fpsDen;
 	chgArg.intraRefreshMbs = pstChgParam->numIntraRefreshMbs;
+
+	if ( chgArg.chgFlg & VID_CHG_GOP )
+		hEnc->gopSize = chgArg.gopSize;
+
+	if ( hEnc->hRC )
+	{
+		if ( NX_VidRateCtrlChangePara( hEnc->hRC, pstChgParam ) != VID_ERR_NONE )
+			return VID_ERR_CHG_PARAM;
+
+		chgArg.chgFlg = pstChgParam->chgFlg & 0x18;
+		chgArg.gopSize = 0;
+		chgArg.bitrate = 0;
+		chgArg.frameRateNum = pstChgParam->fpsNum;
+		chgArg.frameRateDen = pstChgParam->fpsDen;
+		chgArg.intraRefreshMbs = pstChgParam->numIntraRefreshMbs;
+	}
 
 	ret = ioctl( hEnc->hEncDrv, IOCTL_VPU_ENC_CHG_PARAM, &chgArg );
 	if( ret < 0 )
@@ -477,7 +569,7 @@ VID_ERROR_E NX_VidEncJpegGetHeader( NX_VID_ENC_HANDLE hEnc, uint8_t *pbyJpgHeade
 	VPU_ENC_GET_HEADER_ARG *pHdrArg = (VPU_ENC_GET_HEADER_ARG *)calloc(sizeof(VPU_ENC_GET_HEADER_ARG), 1);
 	FUNC_IN();
 	ret = ioctl( hEnc->hEncDrv, IOCTL_VPU_JPG_GET_HEADER, pHdrArg );
-	printf("pHdrArg->jpgHeader.headerSize = %d\n", pHdrArg->jpgHeader.headerSize);
+
 	if( ret < 0 )
 	{
 		NX_ErrMsg( ("IOCTL_VPU_JPG_GET_HEADER ioctl failed!!!\n") );
@@ -577,8 +669,7 @@ struct NX_VIDEO_DEC_INFO
 	int32_t picFlag[MAX_DEC_FRAME_BUFFERS];
 };
 
-
-NX_VID_DEC_HANDLE NX_VidDecOpen( int32_t iCodecType, uint32_t uMp4Class, int32_t iOptions, int32_t *piInstanceIdx )
+NX_VID_DEC_HANDLE NX_VidDecOpen( VID_TYPE_E eCodecType, uint32_t uMp4Class, int32_t iOptions, int32_t *piInstanceIdx  )
 {
 	int32_t ret;
 	VPU_OPEN_ARG openArg;
@@ -598,7 +689,7 @@ NX_VID_DEC_HANDLE NX_VidDecOpen( int32_t iCodecType, uint32_t uMp4Class, int32_t
 		goto ERROR_EXIT;
 	}
 
-	if( iCodecType == NX_AVC_DEC || iCodecType == NX_AVC_ENC )
+	if( eCodecType == NX_AVC_DEC || eCodecType == NX_AVC_ENC )
 	{
 		workBufSize += PS_SAVE_SIZE;
 	}
@@ -615,7 +706,7 @@ NX_VID_DEC_HANDLE NX_VidDecOpen( int32_t iCodecType, uint32_t uMp4Class, int32_t
 		goto ERROR_EXIT;
 	}
 
-	switch( iCodecType )
+	switch( eCodecType )
 	{
 		case NX_AVC_DEC:
 			openArg.codecStd = CODEC_STD_AVC;
@@ -832,6 +923,8 @@ VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VI
 		frameArg.sliceBuffer = *hDec->hSliceBuffer;
 	if( hDec->hColMvBuffer)
 		frameArg.colMvBuffer = *hDec->hColMvBuffer;
+	if( hDec->hPvbSliceBuffer )
+		frameArg.pvbSliceBuffer = *hDec->hPvbSliceBuffer;
 
 	ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_REG_FRAME_BUF, &frameArg );
 	if( ret < 0 )
@@ -847,8 +940,8 @@ VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VI
 		NX_DbgMsg( DBG_WARNING, ("[Warning] External Buffer too small.(min=%d, buffers=%d)\n", pstSeqOut->minBuffers, hDec->numFrameBuffers) );
 	}
 
-	pstSeqOut->width        = seqArg.outWidth;
-	pstSeqOut->height       = seqArg.outHeight;
+	pstSeqOut->width        = seqArg.cropRight;
+	pstSeqOut->height       = seqArg.cropBottom;
 	pstSeqOut->frameBufDelay= seqArg.frameBufDelay;
 	pstSeqOut->isInterlace 	= seqArg.interlace;
 
@@ -963,8 +1056,8 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 
 	pstDecOut->outImgIdx = decArg.indexFrameDisplay;
 	pstDecOut->outDecIdx = decArg.indexFrameDecoded;
-	pstDecOut->width     = decArg.outWidth;
-	pstDecOut->height    = decArg.outHeight;
+	pstDecOut->width     = decArg.outRect.right;
+	pstDecOut->height    = decArg.outRect.bottom;
 	pstDecOut->picType   = PIC_TYPE_UNKNOWN;
 
 	pstDecOut->strmReadPos  = decArg.strmReadPos;

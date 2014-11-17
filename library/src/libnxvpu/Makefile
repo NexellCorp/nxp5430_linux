@@ -9,8 +9,9 @@ INC_INSTALL	:= 	../../include
 # Build options
 INCLUDE += -I./ -I../../include -I$(KERNDIR)/include
 
-LIBRARY += -L../../lib/
+LIBRARY += -L../../lib/ -L../../lib/ratecontrol/
 LIBRARY += -lnxvmem
+LIBRARY += -lnxvidrc
 
 ######################################################################
 # Target

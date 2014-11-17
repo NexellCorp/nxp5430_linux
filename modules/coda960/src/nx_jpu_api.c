@@ -18,7 +18,7 @@
 #if defined (CONFIG_ARCH_NXP5430)
 #include <mach/nxp5430.h>
 #endif
-#if defined (CONFIG_ARCH_NXP4430)
+#if defined (CONFIG_ARCH_NXP4330)
 #include <mach/nxp4330.h>
 #endif
 #include <mach/devices.h>

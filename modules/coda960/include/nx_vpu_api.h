@@ -234,7 +234,7 @@ typedef struct tagVpuEncInfo
 	int cbcrInterleaveRefFrame;	//	Reference Frame's CbCrInterleave
 	int frameEndian;
 
-	int userQScale;
+	int frameQp;
 	int jpegQuality;
 
 	//
@@ -285,8 +285,6 @@ typedef struct tagVpuEncInfo
 		EncH263Param h263EncParam;
 		EncJpegInfo jpgEncInfo;
 	}EncCodecParam;
-
-	unsigned int numEncFrames;	//	encoding frame counter
 
 	//	Motion Estimation
 	int MEUseZeroPmv;

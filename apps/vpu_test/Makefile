@@ -6,10 +6,10 @@ include ../../build.env
 # Build options
 INCLUDE += -I./
 INCLUDE += -I../../library/include
-LIBRARY	+= -L../../library/lib 
-LIBRARY += -lnxvpu -lnxdsp -lnxvip -lnxv4l2 -lnxvmem
+LIBRARY	+= -L../../library/lib -L../../library/lib/ratecontrol 
+LIBRARY += -lnxvpu -lnxdsp -lnxvip -lnxv4l2 -lnxvmem -lnxvidrc
 LIBRARY += -L./theoraparser -ltheoraparser
-LIBRARY	+= -lavcodec -lavformat -lstdc++
+LIBRARY	+= -lavcodec -lavformat -lstdc++ -lm
 
 ######################################################################
 # Target
@@ -21,8 +21,8 @@ ENC_OBJS	:=
 ENC_OBJS	+= queue.o
 ENC_OBJS	+= enc_main.o
 
-ENC_PERF_OBJS		:=
-ENC_PERF_OBJS		+= enc_perf_main.o
+ENC_PERF_OBJS	:=
+ENC_PERF_OBJS	+= enc_perf_main.o
 
 JPG_OBJS	:=
 JPG_OBJS	+= queue.o

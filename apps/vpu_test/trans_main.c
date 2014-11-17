@@ -96,22 +96,22 @@ static void dumpdata( void *data, int len, const char *msg );
 	*_p++ = (unsigned char)((_var)>>0);  \
 	*_p++ = (unsigned char)((_var)>>8);  \
 	*_p++ = (unsigned char)((_var)>>16); \
-	*_p++ = (unsigned char)((_var)>>24); 
+	*_p++ = (unsigned char)((_var)>>24);
 
 #define PUT_BE32(_p, _var) \
 	*_p++ = (unsigned char)((_var)>>24);  \
 	*_p++ = (unsigned char)((_var)>>16);  \
 	*_p++ = (unsigned char)((_var)>>8); \
-	*_p++ = (unsigned char)((_var)>>0); 
+	*_p++ = (unsigned char)((_var)>>0);
 
 #define PUT_LE16(_p, _var) \
 	*_p++ = (unsigned char)((_var)>>0);  \
-	*_p++ = (unsigned char)((_var)>>8);  
+	*_p++ = (unsigned char)((_var)>>8);
 
 
 #define PUT_BE16(_p, _var) \
 	*_p++ = (unsigned char)((_var)>>8);  \
-	*_p++ = (unsigned char)((_var)>>0);  
+	*_p++ = (unsigned char)((_var)>>0);
 
 
 
@@ -312,7 +312,7 @@ int GetSequenceInformation( FFMPEG_STREAM_READER *streamReader, AVStream *stream
 				return retSize;
 			default:
 				break;
-			
+
 		}
 	}
 	else if(  (codecId == CODEC_ID_WMV1) || (codecId == CODEC_ID_WMV2) || (codecId == CODEC_ID_WMV3) )
@@ -857,8 +857,6 @@ int transcoding( const char *inFileName, const char *outFileName )
 		return -1;
 	}
 
-	printf("Decoder Idx = %d \n", instanceIdx);
-
 	seqSize = GetSequenceInformation( pReader, pReader->video_stream, seqData, sizeof(seqData) );
 	if( seqSize == 0 )
 	{
@@ -879,9 +877,9 @@ int transcoding( const char *inFileName, const char *outFileName )
 
 	//	Rate Control
 	encInitParam.enableRC = 1;		//	Enable Rate Control
-	encInitParam.enableSkip = 0;	//	Enable Skip
-	encInitParam.maxQScale = 51;	//	Max Qunatization Scale
-	encInitParam.userQScale = 23;	//	Default Encoder API ( enableRC == 0 )
+	encInitParam.disableSkip = 0;	//	Enable Skip
+	encInitParam.maximumQp = 51;	//	Max Qunatization Scale
+	encInitParam.initialQp = 23;	//	Default Encoder API ( enableRC == 0 )
 
 	NX_VidEncInit( hEnc, &encInitParam );
 	if( outFd )

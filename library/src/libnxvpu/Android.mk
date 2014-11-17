@@ -6,6 +6,8 @@ include $(CLEAR_VARS)
 NX_PYROPE_INCLUDE := $(TOP)/hardware/nexell/pyrope/include
 NX_LINUX_INCLUDE  := $(TOP)/linux/nxp5430/library/include
 
+RATECONTROL_PATH := $(TOP)/linux/nxp5430/library/lib/ratecontrol
+
 LOCAL_SHARED_LIBRARIES :=	\
 	liblog \
 	libcutils \
@@ -23,6 +25,10 @@ LOCAL_CFLAGS :=
 
 LOCAL_SRC_FILES := \
 	nx_video_api.c
+
+LOCAL_LDFLAGS += \
+	-L$(RATECONTROL_PATH)	\
+	-lnxvidrc_android
 
 LOCAL_MODULE := libnx_vpu
 

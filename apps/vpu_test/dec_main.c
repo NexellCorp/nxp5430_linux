@@ -294,8 +294,6 @@ int GetSequenceInformation( FFMPEG_STREAM_READER *streamReader, AVStream *stream
 	int retSize = 0;
 	unsigned int tag = stream->codec->codec_tag;
 
-	printf("GetSequenceInformation()\n");
-
 	if (stream->avg_frame_rate.den && stream->avg_frame_rate.num)
 		frameRate = (int)((double)stream->avg_frame_rate.num/(double)stream->avg_frame_rate.den);
 	if (!frameRate && stream->r_frame_rate.den && stream->r_frame_rate.num)
@@ -436,10 +434,7 @@ int GetSequenceInformation( FFMPEG_STREAM_READER *streamReader, AVStream *stream
 	{
 		ThoScaleInfo thoScaleInfo;
 		tho_parser_t *thoParser = streamReader->theoraParser;
-		printf("thoParser->open() before \n");
-
 		thoParser->open(thoParser->handle, stream->codec->extradata, stream->codec->extradata_size, (int *)&thoScaleInfo);
-		printf("theora_make_stream() before \n");
 		retSize = theora_make_stream((void *)streamReader->theoraParser->handle, buffer, 1);
 		return retSize;
 	}
@@ -843,14 +838,11 @@ static void dump_video( FFMPEG_STREAM_READER *pReader, const char *outFileName )
 	long long timeStamp;
 	int isKey=0;
 
-	printf("dump_video() \n");
-
 	frame_count = 0;
 	for( ;; )
 	{
 		if(frame_count==0 )
 		{
-			printf("GetSequenceInformation() before \n");
 			readSize = GetSequenceInformation( pReader, video_stream, streamBuffer, sizeof(streamBuffer) );
 			printf("Get Seqdata = %d\n", readSize );
 			if( outFd && readSize >0 )
@@ -859,7 +851,6 @@ static void dump_video( FFMPEG_STREAM_READER *pReader, const char *outFileName )
 			}
 		}
 
-		printf("ReadStream() before \n");
 		if( ReadStream( pReader, video_stream, streamBuffer, &readSize, &isKey, &timeStamp ) != 0 )
 		{
 			break;
@@ -1171,8 +1162,6 @@ int dec_main( int argc, char *argv[] )
 				seqIn.seqSize = readSize+seqSize;
 				seqIn.enableUserData = 0;
 				seqIn.disableOutReorder = 0;
-
-				printf("test code1, filter = %d \n", seqIn.enablePostFilter);
 				vidRet = NX_VidDecInit( hDec, &seqIn, &seqOut );
 				tmpSize = readSize+seqSize;
 			}
@@ -1189,9 +1178,6 @@ int dec_main( int argc, char *argv[] )
 				seqIn.seqSize = readSize;
 				seqIn.enableUserData = 0;
 				seqIn.disableOutReorder = 0;
-
-
-				printf("test code2, filter = %d \n", seqIn.enablePostFilter);
 				vidRet = NX_VidDecInit( hDec, &seqIn, &seqOut );
 				tmpSize = readSize;
  			}
@@ -1208,9 +1194,7 @@ int dec_main( int argc, char *argv[] )
 				return -1;
 			}
 
-			printf("test code, filter = %d \n", seqIn.enablePostFilter);
-
-			printf("<<<<<<<<<<< Init_Info >>>>>>>>>>>>>> \n");
+			printf("<<<<<<<<<<< Init_Out >>>>>>>>>>>>>> \n");
 			printf("minBuffers = %d \n", seqOut.minBuffers);
 			printf("numBuffers = %d \n", seqOut.numBuffers);
 			printf("width = %d \n", seqOut.width);
@@ -1261,8 +1245,10 @@ int dec_main( int argc, char *argv[] )
 			exit(-2);
 		}
 
+		printf("%2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x \n", decIn.strmBuf[0], decIn.strmBuf[1], decIn.strmBuf[2], decIn.strmBuf[3], decIn.strmBuf[4], decIn.strmBuf[5], decIn.strmBuf[6], decIn.strmBuf[7],
+			decIn.strmBuf[8], decIn.strmBuf[9], decIn.strmBuf[10], decIn.strmBuf[11], decIn.strmBuf[12], decIn.strmBuf[13], decIn.strmBuf[14], decIn.strmBuf[15]);
 		printf("Frame[%5d]: size=%6d, DspIdx=%2d, DecIdx=%2d, InTimeStamp=%7lld, outTimeStamp=%7lld, time=%6lld \n", frameCount, tmpSize, decOut.outImgIdx, decOut.outDecIdx, timeStamp, decOut.timeStamp, (endTime-startTime));
-		printf("interlace = %d(%d), Reliable = %d, MultiResel = %d, upW = %d, upH = %d\n", decOut.isInterlace, decOut.topFieldFirst, decOut.outFrmReliable_0_100, decOut.multiResolution, decOut.upSampledWidth, decOut.upSampledHeight);
+		//printf("interlace = %d(%d), Reliable = %d, MultiResel = %d, upW = %d, upH = %d\n", decOut.isInterlace, decOut.topFieldFirst, decOut.outFrmReliable_0_100, decOut.multiResolution, decOut.upSampledWidth, decOut.upSampledHeight);
 
 		totalTime += (endTime-startTime);
 		frameCount ++;

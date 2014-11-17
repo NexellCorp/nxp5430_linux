@@ -19,7 +19,7 @@
 #if defined (CONFIG_ARCH_NXP5430)
 #include <mach/nxp5430.h>
 #endif
-#if defined (CONFIG_ARCH_NXP4430)
+#if defined (CONFIG_ARCH_NXP4330)
 #include <mach/nxp4330.h>
 #endif
 #include <mach/devices.h>
@@ -43,6 +43,7 @@
 #define	DBG_POWER		0
 #define	DBG_CLOCK		0
 #define DBG_USERDATA	0
+#define DBG_REGISTER    0
 
 
 #include "nx_vpu_gdi.h"
@@ -241,7 +242,7 @@ void NX_VPU_HwOn(void)
 	nxp_soc_peri_reset_enter(RESET_ID_CODA_A);			//	61
 	nxp_soc_peri_reset_enter(RESET_ID_CODA_P);			//	62
 #endif
-#if defined (CONFIG_ARCH_NXP4430)
+#if defined (CONFIG_ARCH_NXP4330)
 	//	H/W Reset
 	nxp_soc_rsc_enter(RESET_ID_CODA_C);			//	63
 	nxp_soc_rsc_enter(RESET_ID_CODA_A);			//	61
@@ -276,7 +277,7 @@ void NX_VPU_HwOn(void)
 	nxp_soc_peri_reset_exit(RESET_ID_CODA_A);			//	61
 	nxp_soc_peri_reset_exit(RESET_ID_CODA_C);			//	63
 #endif
-#if defined (CONFIG_ARCH_NXP4430)
+#if defined (CONFIG_ARCH_NXP4330)
 	//	Release Reset
 	nxp_soc_rsc_exit(RESET_ID_CODA_P);			//	62
 	nxp_soc_rsc_exit(RESET_ID_CODA_A);			//	61
@@ -305,7 +306,7 @@ void NX_VPU_HWOff(void)
 		nxp_soc_peri_reset_enter(RESET_ID_CODA_A);			//	61
 		nxp_soc_peri_reset_enter(RESET_ID_CODA_P);			//	62
 #endif
-#if defined (CONFIG_ARCH_NXP4430)
+#if defined (CONFIG_ARCH_NXP4330)
 		//	H/W Reset
 		nxp_soc_rsc_enter(RESET_ID_CODA_C);			//	63
 		nxp_soc_rsc_enter(RESET_ID_CODA_A);			//	61
@@ -494,7 +495,7 @@ static int VPU_WaitBitInterrupt(int mSeconds)
 	{
 		reason=VpuReadReg(BIT_INT_REASON);
 		VpuWriteReg(BIT_INT_REASON, 0);
-		NX_ErrMsg(("VPU_WaitVpuInterrupt() TimeOut!!!(reason = 0x%.8x)\n", reason));
+		NX_ErrMsg(("VPU_WaitVpuInterrupt() TimeOut!!!(reason = 0x%.8x, CurPC = %x %x %x )\n", reason, VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC) ));
 		return 0;
 	}
 	else
@@ -926,14 +927,14 @@ NX_VPU_RET	NX_VpuEncSetSeqParam( NX_VPU_INST_HANDLE handle, VPU_ENC_SEQ_ARG *seq
 	encInfo->frameRateNum = seqArg->frameRateNum;
 	encInfo->frameRateDen = seqArg->frameRateDen;
 
-	encInfo->rcEnable = seqArg->enableRC;
+	encInfo->rcEnable = ( seqArg->RCModule != 1) ? (0) : (1);
 	encInfo->bitRate = (seqArg->bitrate/1024)&0x7FFF;			//	in KiloByte
-	encInfo->userQpMax = seqArg->maxQScale;
-	encInfo->enableAutoSkip = seqArg->rcAutoSkip;
+	encInfo->userQpMax = seqArg->maxQP;
+	encInfo->enableAutoSkip = !seqArg->disableSkip;
 	encInfo->initialDelay = seqArg->initialDelay;
 	encInfo->vbvBufSize = seqArg->vbvBufferSize;
 	encInfo->userGamma = seqArg->gammaFactor;
-	encInfo->userQScale = seqArg->userQScale;
+	encInfo->frameQp = seqArg->initQP;
 
 	encInfo->MESearchRange = seqArg->searchRange;
 	encInfo->intraRefresh = seqArg->intraRefreshMbs;
@@ -952,8 +953,8 @@ NX_VPU_RET	NX_VpuEncSetSeqParam( NX_VPU_INST_HANDLE handle, VPU_ENC_SEQ_ARG *seq
 
 	encInfo->EncCodecParam.avcEncParam.audEnable = seqArg->enableAUDelimiter;
 
-	NX_DbgMsg(1, ("NX_VpuEncSetSeqParam() : %dx%d, %d fps, %d kbps (gop(%d), maxQ(%d), SR(%d), StreamBuffer(0x%08x, 0x%08x))\n",
-		encInfo->srcWidth, encInfo->srcHeight, encInfo->frameRateNum/encInfo->frameRateDen, encInfo->bitRate,
+	NX_DbgMsg(1, ("NX_VpuEncSetSeqParam() : %dx%d, %d/%d fps, %d kbps (gop(%d), maxQ(%d), SR(%d), StreamBuffer(0x%08x, 0x%08x))\n",
+		encInfo->srcWidth, encInfo->srcHeight, encInfo->frameRateNum, encInfo->frameRateDen, encInfo->bitRate,
 		encInfo->gopSize, encInfo->userQpMax, encInfo->MESearchRange, encInfo->strmBufPhyAddr, encInfo->strmBufVirAddr));
 
 	if( CODEC_STD_MJPG == encInfo->codecStd )
@@ -1041,13 +1042,13 @@ NX_VPU_RET	NX_VpuEncGetHeader( NX_VPU_INST_HANDLE handle, VPU_ENC_GET_HEADER_ARG
 	else if ( MP4_ENC == handle->codecMode )
 	{
 		//	VOS
-		if( VPU_RET_OK != (ret = VPU_EncGetHeaderCommand(handle, VOS_HEADER, &ptr, &size)) )
+		/*if( VPU_RET_OK != (ret = VPU_EncGetHeaderCommand(handle, VOS_HEADER, &ptr, &size)) )
 		{
 			NX_ErrMsg(("NX_VpuEncGetHeader() VOS_HEADER Error!\n"));
 			goto GET_HEADER_EXIT;
 		}
 		NX_DrvMemcpy( header->mp4Header.vosData, ptr, size );
-		header->mp4Header.vosSize = size;
+		header->mp4Header.vosSize = size;*/
 		//	VOL
 		if( VPU_RET_OK != (ret = VPU_EncGetHeaderCommand(handle, VOL_HEADER, &ptr, &size)) )
 		{
@@ -1066,11 +1067,6 @@ GET_HEADER_EXIT:
 //
 NX_VPU_RET	NX_VpuEncRunFrame( NX_VPU_INST_HANDLE handle, VPU_ENC_RUN_FRAME_ARG *runArg )
 {
-	VpuEncInfo *pEncInfo = &handle->codecInfo.encInfo;
-
-	if( pEncInfo->gopSize && pEncInfo->numEncFrames++ % pEncInfo->gopSize == 0 )
-		runArg->forceIPicture = 1;
-
 	return VPU_EncOneFrameCommand( handle, runArg );
 }
 
@@ -1143,10 +1139,10 @@ static void VPU_EncDefaultParam(VpuEncInfo *pEncInfo)
 	else if(  CODEC_STD_H263 == pEncInfo->codecStd )
 	{
 		EncH263Param *pH263Param = &pEncInfo->EncCodecParam.h263EncParam;
-		pH263Param->h263AnnexIEnable = 1;
+		pH263Param->h263AnnexIEnable = 0;
 		pH263Param->h263AnnexJEnable = 1;
 		pH263Param->h263AnnexKEnable = 0;
-		pH263Param->h263AnnexTEnable = 0;
+		pH263Param->h263AnnexTEnable = 1;
 
 		pEncInfo->userQpMax = 31;
 	}
@@ -1223,7 +1219,14 @@ static NX_VPU_RET VPU_EncSeqCommand(NX_VpuCodecInst *pInst)
 	VpuWriteReg(CMD_ENC_SEQ_SLICE_MODE, tmpData);
 
 	//	Write GOP Size
-	VpuWriteReg(CMD_ENC_SEQ_GOP_NUM, pEncInfo->gopSize);
+	if (pEncInfo->rcEnable)
+	{
+		VpuWriteReg(CMD_ENC_SEQ_GOP_NUM, pEncInfo->gopSize);
+	}
+	else
+	{
+		VpuWriteReg(CMD_ENC_SEQ_GOP_NUM, 0);
+	}
 
 	//	Rate Control
 	if (pEncInfo->rcEnable)
@@ -1302,14 +1305,16 @@ static NX_VPU_RET VPU_EncSeqCommand(NX_VpuCodecInst *pInst)
 	}
 	VpuWriteReg(BIT_BIT_STREAM_CTRL, tmpData);
 
-	/*{
+#if (DBG_REGISTER)
+	{
 		int reg;
-		printk("[SEQ_INIT_Reg]\n");
+		NX_DbgMsg( DBG_REGISTER, ("[SEQ_INIT_Reg]\n") );
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16)
 		{
-			printk("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12) );
+			NX_DbgMsg( DBG_REGISTER, ("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12)) );
 		}
-	}*/
+	}
+#endif
 
 	VpuBitIssueCommand(pInst, SEQ_INIT);
 
@@ -1416,14 +1421,16 @@ static NX_VPU_RET VPU_EncSetFrameBufCommand(NX_VpuCodecInst *pInst)
         VpuWriteReg(CMD_SET_FRAME_DP_BUF_SIZE, pEncInfo->usbSampleDPSize);
     }
 
-	/*{
+#if (DBG_REGISTER)
+	{
 		int reg;
-		printk("[ENC_SET_FRM_BUF_REG]\n");
+		NX_DbgMsg( DBG_REGISTER, ("[ENC_SET_FRM_BUF_Reg]\n") );
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16)
 		{
-			printk("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12) );
+			NX_DbgMsg( DBG_REGISTER, ("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12)) );
 		}
-	}*/
+	}
+#endif
 
 	VpuBitIssueCommand(pInst, SET_FRAME_BUF);
 	if( VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT, BIT_BUSY_FLAG) )
@@ -1454,7 +1461,7 @@ static NX_VPU_RET VPU_EncGetHeaderCommand(NX_VpuCodecInst *pInst, unsigned int h
 		VpuWriteReg(CMD_ENC_HEADER_BB_SIZE, pEncInfo->strmBufSize/1024);
 	}
 
-	if( pInst->codecMode == AVC_ENC )
+	if( pInst->codecMode == AVC_ENC && headerType == SPS_RBSP )
 	{
 		EncAvcParam *avcParam = &pEncInfo->EncCodecParam.avcEncParam;
 		int CropH = 0, CropV = 0;
@@ -1483,14 +1490,16 @@ static NX_VPU_RET VPU_EncGetHeaderCommand(NX_VpuCodecInst *pInst, unsigned int h
 	VpuWriteReg(BIT_RD_PTR, pEncInfo->strmBufPhyAddr);
 	VpuWriteReg(BIT_WR_PTR, pEncInfo->strmBufPhyAddr);
 
-	/*{
+#if (DBG_REGISTER)
+	{
 		int reg;
-		printk("[ENC_HEADER_Reg]\n");
+		NX_DbgMsg( DBG_REGISTER, ("[ENC_HEADER_Reg]\n") );
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16)
 		{
-			printk("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12) );
+			NX_DbgMsg( DBG_REGISTER, ("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12)) );
 		}
-	}*/
+	}
+#endif
 
 	VpuBitIssueCommand(pInst, ENCODE_HEADER);
 	if( VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT, BIT_BUSY_FLAG) )
@@ -1605,14 +1614,16 @@ static NX_VPU_RET VPU_EncOneFrameCommand( NX_VpuCodecInst *pInst, VPU_ENC_RUN_FR
 	val |= VPU_STREAM_ENDIAN;
 	VpuWriteReg(BIT_BIT_STREAM_CTRL, val);
 
-	/*{
+#if (DBG_REGISTER)
+	{
 		int reg;
-		printk("[ENC_RUN_Reg]\n");
+		NX_DbgMsg( DBG_REGISTER, ("[ENC_RUN_Reg]\n") );
 		for (reg = 0x180 ; reg < 0x200 ; reg += 16)
 		{
-			printk("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12) );
+			NX_DbgMsg( DBG_REGISTER, ("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12)) );
 		}
-	}*/
+	}
+#endif
 
 	VpuBitIssueCommand(pInst, PIC_RUN);
 
@@ -1646,7 +1657,8 @@ static NX_VPU_RET VPU_EncOneFrameCommand( NX_VpuCodecInst *pInst, VPU_ENC_RUN_FR
 	sliceNumber = VpuReadReg(RET_ENC_PIC_SLICE_NUM);
 
 	picFlag = VpuReadReg(RET_ENC_PIC_FLAG);
-	//	VpuReadReg(RET_ENC_PIC_FRAME_IDX);	//	we don't need recon frame idx
+	runArg->reconImgIdx = VpuReadReg(RET_ENC_PIC_FRAME_IDX);	//	we don't need recon frame idx
+
 	//	VpuReadReg(BIT_WR_PTR);				//	we don't need write ptr ( ring buffer only ? )
 	pEncInfo->strmEndFlag = VpuReadReg(BIT_BIT_STREAM_PARAM);
 
@@ -1654,6 +1666,7 @@ static NX_VPU_RET VPU_EncOneFrameCommand( NX_VpuCodecInst *pInst, VPU_ENC_RUN_FR
 	runArg->outStreamSize = size;
 	runArg->outStreamAddr = (unsigned char*)pEncInfo->strmBufVirAddr;
 	NX_DbgMsg( 0, ("Encoded Size = %d, PicType = %d, picFlag = %d, sliceNumber = %d\n", size, picType, picFlag, sliceNumber) );
+
 	return VPU_RET_OK;
 }
 
@@ -1690,7 +1703,7 @@ static NX_VPU_RET VPU_EncChangeParameterCommand( NX_VpuCodecInst *pInst, VPU_ENC
 		VpuWriteReg(CMD_ENC_SEQ_PARA_HEC_MODE, chgArg->hecMode);
 	}
 
-	VpuWriteReg(CMD_ENC_SEQ_PARA_CHANGE_ENABLE, chgArg->chgFlg);
+	VpuWriteReg(CMD_ENC_SEQ_PARA_CHANGE_ENABLE, chgArg->chgFlg & 0x7F);
 
 	VpuBitIssueCommand(pInst, RC_CHANGE_PARAMETER);
 	if( VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT, BIT_BUSY_FLAG) )
@@ -2055,13 +2068,10 @@ NX_VPU_RET	NX_VpuDecSetSeqInfo( NX_VPU_INST_HANDLE handle, VPU_DEC_SEQ_INIT_ARG 
 		}
 	}
 #endif
-	printk("NX_VpuDecSetSeqInfo() : deblock = %d \n", seqArg->enablePostFilter);
 
 	ret = VPU_DecSeqInitCommand( handle, seqArg );
 	if( VPU_RET_OK != ret )
 		return ret;
-
-	printk("NX_VpuDecSetSeqInfo()2 : deblock = %d \n", seqArg->enablePostFilter);
 
 	FUNCOUT();
 	return VPU_DecSeqComplete( handle, seqArg);
@@ -2198,7 +2208,7 @@ static NX_VPU_RET VPU_DecSeqComplete( NX_VpuCodecInst *pInst, VPU_DEC_SEQ_INIT_A
 
 	pArg->frameRateNum = VpuReadReg(RET_DEC_SEQ_FRATE_NR);
 	pArg->frameRateDen = VpuReadReg(RET_DEC_SEQ_FRATE_DR);
-	printk("frameRateNum = %d(%x), frameRateDen = %d(%x)\n", pArg->frameRateNum, pArg->frameRateNum, pArg->frameRateDen, pArg->frameRateDen);
+	//printk("frameRateNum = %d(%x), frameRateDen = %d(%x)\n", pArg->frameRateNum, pArg->frameRateNum, pArg->frameRateDen, pArg->frameRateDen);
 
 	if (pInst->codecMode == AVC_DEC && pArg->frameRateDen > 0)
 		pArg->frameRateDen  *= 2;
@@ -2233,9 +2243,9 @@ static NX_VPU_RET VPU_DecSeqComplete( NX_VpuCodecInst *pInst, VPU_DEC_SEQ_INIT_A
 		if( val == 0 && val2 == 0 )
 		{
 			pArg->cropLeft = 0;
-			pArg->cropRight = pInfo->width;
+			pArg->cropRight = pArg->outWidth;
 			pArg->cropTop = 0;
-			pArg->cropBottom = pInfo->height;
+			pArg->cropBottom = pArg->outHeight;
 		}
 		else
 		{
@@ -2252,9 +2262,9 @@ static NX_VPU_RET VPU_DecSeqComplete( NX_VpuCodecInst *pInst, VPU_DEC_SEQ_INIT_A
 	else
 	{
 		pArg->cropLeft = 0;
-		pArg->cropRight = pInfo->width;
+		pArg->cropRight = pArg->outWidth;
 		pArg->cropTop = 0;
-		pArg->cropBottom = pInfo->height;
+		pArg->cropBottom = pArg->outHeight;
 	}
 
 	val = VpuReadReg(RET_DEC_SEQ_HEADER_REPORT);
@@ -2375,6 +2385,22 @@ static NX_VPU_RET VPU_DecSeqInitCommand(NX_VpuCodecInst *pInst, VPU_DEC_SEQ_INIT
 	VpuWriteReg(CMD_DEC_SEQ_BB_START, pInfo->strmBufPhyAddr);
 	VpuWriteReg(CMD_DEC_SEQ_BB_SIZE, pInfo->strmBufSize / 1024); // size in KBytes
 
+	//printk("hdr Addr = %x, Size = %x \n", pInfo->strmBufPhyAddr, pInfo->strmBufSize / 1024);
+	//printk("CurPC = %x, WR = %x, RD =  %x, Idx = %d \n", VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_WR_PTR), VpuReadReg(BIT_RD_PTR), pInst->instIndex );
+
+#if (DBG_REGISTER)
+		int i;
+		VpuWriteReg(BIT_BIT_STREAM_PARAM, 0 );
+
+		// Clear Stream end flag
+		i = (int)VpuReadReg( BIT_BIT_STREAM_PARAM );
+		if (i & (1 << ( pInst->instIndex + 2))) {
+		i -= 1 << ( pInst->instIndex + 2);
+		}
+		VpuWriteReg( BIT_BIT_STREAM_PARAM, i);
+	}
+#endif
+
 	if(pArg->enableUserData) {
 		pInfo->userDataBufPhyAddr = pArg->userDataBuffer.phyAddr;
 		pInfo->userDataBufVirAddr = pArg->userDataBuffer.virAddr;
@@ -2399,8 +2425,6 @@ static NX_VPU_RET VPU_DecSeqInitCommand(NX_VpuCodecInst *pInst, VPU_DEC_SEQ_INIT
 	if (!pInfo->lowDelayInfo.lowDelayEn) {
 		val |= (pInfo->enableReordering<<1) & 0x2;
 	}
-
-	printk("deblock = %d (out-loof) \n", pInfo->enableMp4Deblock);
 
 	val |= (pInfo->enableMp4Deblock & 0x1);
 	val |= (pInfo->avcErrorConcealMode << 2);	//Enable error conceal on missing reference in h.264/AVC
@@ -2451,6 +2475,18 @@ static NX_VPU_RET VPU_DecSeqInitCommand(NX_VpuCodecInst *pInst, VPU_DEC_SEQ_INIT
 	//VpuWriteReg(H_MBY_SYNC_OUT, 0x00);
 	VpuWriteReg(BIT_FRM_DIS_FLG, 0);
 
+#if (DBG_REGISTER)
+	{
+		int reg;
+		NX_DbgMsg( DBG_REGISTER, ("[DEC_SEQ_INIT]\n") );
+		NX_DbgMsg( DBG_REGISTER, ("[Strm_CTRL : 0x10C]%x \n", VpuReadReg(BIT_BIT_STREAM_CTRL) ));
+		for (reg = 0x180 ; reg < 0x200 ; reg += 16)
+		{
+			NX_DbgMsg( DBG_REGISTER, ("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12)) );
+		}
+	}
+#endif
+
 	VpuBitIssueCommand(pInst, SEQ_INIT);
 
 WAIT_INTERRUPT:
@@ -2460,6 +2496,8 @@ WAIT_INTERRUPT:
 		printk("WritePos = 0x%.8x, ReadPos = 0x%.8x\n", VpuReadReg(BIT_WR_PTR), VpuReadReg(BIT_RD_PTR));
 		return VPU_RET_ERR_TIMEOUT;
 	}
+
+	//printk("WritePos = 0x%.8x, ReadPos = 0x%.8x\n", VpuReadReg(BIT_WR_PTR), VpuReadReg(BIT_RD_PTR));
 
 	if( reason & (1<<VPU_INT_BIT_SEQ_INIT) )
 	{
@@ -2641,6 +2679,17 @@ static NX_VPU_RET VPU_DecRegisterFrameBufCommand( NX_VpuCodecInst *pInst, VPU_DE
 
 	VpuBitIssueCommand(pInst, SET_FRAME_BUF);
 
+#if (DBG_REGISTER)
+	{
+		int reg;
+		NX_DbgMsg( DBG_REGISTER, ("[DEC_SET_FRM_BUF_Reg]\n") );
+		for (reg = 0x180 ; reg < 0x200 ; reg += 16)
+		{
+			NX_DbgMsg( DBG_REGISTER, ("[Addr = %3x]%x %x %x %x \n", reg, VpuReadReg(BIT_BASE + reg), VpuReadReg(BIT_BASE + reg + 4), VpuReadReg(BIT_BASE + reg + 8), VpuReadReg(BIT_BASE + reg + 12)) );
+		}
+	}
+#endif
+
 	if( VPU_RET_OK != VPU_WaitVpuBusy(VPU_BUSY_CHECK_TIMEOUT, BIT_BUSY_FLAG) )
 	{
 		NX_ErrMsg(("Error VPU_DecRegisterFrameBufCommand failed!!!\n"));
@@ -2684,7 +2733,7 @@ static NX_VPU_RET VPU_DecGetOutputInfo(NX_VpuCodecInst *pInst, VPU_DEC_DEC_FRAME
 	pArg->outWidth  = (val>>16) & 0xFFFF;
 	pArg->outHeight = (val) & 0xFFFF;
 
-	if (pArg->indexFrameDecoded >= 0 && pArg->indexFrameDecoded < MAX_REG_FRAME)
+	//if (pArg->indexFrameDecoded >= 0 && pArg->indexFrameDecoded < MAX_REG_FRAME)
 	{
 		if( pInst->codecMode == VPX_DEC )
 		{
@@ -2745,13 +2794,13 @@ static NX_VPU_RET VPU_DecGetOutputInfo(NX_VpuCodecInst *pInst, VPU_DEC_DEC_FRAME
 		pArg->outRect.right  = rectInfo.right ;
 		pArg->outRect.bottom = rectInfo.bottom;
 	}
-	else
-	{
-		pArg->outRect.left   = 0;
-		pArg->outRect.top    = pInfo->width;
-		pArg->outRect.right  = 0;
-		pArg->outRect.bottom = pInfo->height;
-	}
+	//else
+	//{
+	//	pArg->outRect.left   = 0;
+	//	pArg->outRect.top    = 0;
+	//	pArg->outRect.right  = pInfo->width;
+	//	pArg->outRect.bottom = pInfo->height;
+	//}
 
 	val = VpuReadReg(RET_DEC_PIC_TYPE);
 	pArg->isInterace = (val >> 18) & 0x1;
@@ -2761,8 +2810,6 @@ static NX_VPU_RET VPU_DecGetOutputInfo(NX_VpuCodecInst *pInst, VPU_DEC_DEC_FRAME
 		pArg->progressiveFrame  = (val >> 23) & 0x0003;
 		pArg->isInterace = (pArg->progressiveFrame == 0) ? (1) : (0);
 	}
-
-	//printk("pArg->isInterace = %d, 0x%08x\n", pArg->isInterace, val );
 
 	if (pArg->isInterace)
 	{
