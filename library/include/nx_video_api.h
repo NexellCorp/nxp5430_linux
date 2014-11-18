@@ -27,8 +27,8 @@ typedef enum {
 	NX_H263_DEC     = 0x04,         // H.263
 	NX_DIV3_DEC     = 0x05,         // Divx 3.11(MS Mpeg4 V3)
 	NX_RV_DEC       = 0x06,         // Real Video
-	NX_VPX_THEORA   = 0x07,         // Theora
-	NX_VPX_VP8      = 0x08,         // VP8
+	NX_THEORA_DEC   = 0x07,         // Theora
+	NX_VP8_DEC      = 0x08,         // VP8
 	NX_JPEG_DEC     = 0x09,         // JPEG
 
 	//  Encoders

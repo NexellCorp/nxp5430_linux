@@ -21,7 +21,7 @@ LOCAL_C_INCLUDES := system/core/include/ion \
 					$(NX_PYROPE_INCLUDE) \
 					$(NX_LINUX_INCLUDE)
 
-LOCAL_CFLAGS := 
+LOCAL_CFLAGS :=
 
 LOCAL_SRC_FILES := \
 	nx_video_api.c

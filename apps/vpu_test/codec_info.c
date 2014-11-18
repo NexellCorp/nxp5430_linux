@@ -95,9 +95,9 @@ const CodStdTab codstd_tab[] = {
     { NX_MP4_DEC,	1, CODEC_ID_MSMPEG4V3,	MKTAG('D', 'I', 'V', '6') },
     { NX_MP4_DEC,	5, CODEC_ID_MSMPEG4V3,	MKTAG('D', 'I', 'V', '4') },
 	{ NX_DIV3_DEC,	0, CODEC_ID_MSMPEG4V3,	MKTAG('D', 'V', 'X', '3') },
-    { NX_DIV3_DEC,	0, CODEC_ID_MSMPEG4V3,	MKTAG('A', 'P', '4', '1') },	//Another hacked version of Microsoft's MP43 codec. 
+    { NX_DIV3_DEC,	0, CODEC_ID_MSMPEG4V3,	MKTAG('A', 'P', '4', '1') },	//Another hacked version of Microsoft's MP43 codec.
     { NX_MP4_DEC,	0, CODEC_ID_MSMPEG4V3,	MKTAG('C', 'O', 'L', '1') },
-    { NX_MP4_DEC,	0, CODEC_ID_MSMPEG4V3,	MKTAG('C', 'O', 'L', '0') },	// not support ms mpeg4 v1, 2    
+    { NX_MP4_DEC,	0, CODEC_ID_MSMPEG4V3,	MKTAG('C', 'O', 'L', '0') },	// not support ms mpeg4 v1, 2
 	{ NX_MP4_DEC, 256, CODEC_ID_FLV1,		MKTAG('F', 'L', 'V', '1') }, /* Sorenson spark */
     { NX_VC1_DEC,	0, CODEC_ID_WMV1,		MKTAG('W', 'M', 'V', '1') },
     { NX_VC1_DEC,	0, CODEC_ID_WMV2,		MKTAG('W', 'M', 'V', '2') },
@@ -123,8 +123,8 @@ const CodStdTab codstd_tab[] = {
 
     { NX_RV_DEC,	0, CODEC_ID_RV30,		MKTAG('R', 'V', '3', '0') },
     { NX_RV_DEC,	0, CODEC_ID_RV40,		MKTAG('R', 'V', '4', '0') },
-    { NX_VPX_THEORA,0, CODEC_ID_THEORA,     MKTAG('T', 'H', 'E', 'O') },
-    { NX_VPX_VP8,   0, CODEC_ID_VP8,        MKTAG('V', 'P', '8', '0') }
+    { NX_THEORA_DEC,0, CODEC_ID_THEORA,     MKTAG('T', 'H', 'E', 'O') },
+    { NX_VP8_DEC,   0, CODEC_ID_VP8,        MKTAG('V', 'P', '8', '0') }
 #if 0
 	{ STD_AVS,		0, CODEC_ID_CAVS,		MKTAG('C','A','V','S') },
 	{ STD_AVS,		0, CODEC_ID_AVS,		MKTAG('A','V','S','2') },
@@ -138,13 +138,13 @@ int fourCCToMp4Class(unsigned int fourcc)
 	unsigned int i;
 	int mp4Class = -1;
 	char str[5];
-	
+
 	str[0] = toupper((char)fourcc);
 	str[1] = toupper((char)(fourcc>>8));
 	str[2] = toupper((char)(fourcc>>16));
 	str[3] = toupper((char)(fourcc>>24));
 	str[4] = '\0';
-	
+
 	for(i=0; i<sizeof(codstd_tab)/sizeof(codstd_tab[0]); i++)
 	{
 		if (codstd_tab[i].fourcc == (unsigned int)MKTAG(str[0], str[1], str[2], str[3]) )
@@ -163,13 +163,13 @@ int fourCCToCodStd(unsigned int fourcc)
 	unsigned int i;
 
 	char str[5];
-	
+
 	str[0] = toupper((char)fourcc);
 	str[1] = toupper((char)(fourcc>>8));
 	str[2] = toupper((char)(fourcc>>16));
 	str[3] = toupper((char)(fourcc>>24));
 	str[4] = '\0';
-	
+
 	for(i=0; i<sizeof(codstd_tab)/sizeof(codstd_tab[0]); i++)
 	{
 		if (codstd_tab[i].fourcc == (unsigned int)MKTAG(str[0], str[1], str[2], str[3]))
@@ -197,13 +197,13 @@ int codecIdToMp4Class(int codec_id)
 	}
 
 	return mp4Class;
-	
+
 }
 int codecIdToCodStd(int codec_id)
 {
 	int codStd = -1;
 	unsigned int i;
-	
+
 	for(i=0; i<sizeof(codstd_tab)/sizeof(codstd_tab[0]); i++)
 	{
 		if (codstd_tab[i].codec_id == codec_id)
@@ -219,7 +219,7 @@ int codecIdToFourcc(int codec_id)
 {
 	int fourcc = 0;
 	unsigned int i;
-	
+
 	for(i=0; i<sizeof(codstd_tab)/sizeof(codstd_tab[0]); i++)
 	{
 		if (codstd_tab[i].codec_id == codec_id)

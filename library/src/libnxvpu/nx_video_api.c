@@ -730,10 +730,10 @@ NX_VID_DEC_HANDLE NX_VidDecOpen( VID_TYPE_E eCodecType, uint32_t uMp4Class, int3
 		case NX_VC1_DEC:	//	WMV
 			openArg.codecStd = CODEC_STD_VC1;
 			break;
-		case NX_VPX_THEORA:	//	Theora
+		case NX_THEORA_DEC:	//	Theora
 			openArg.codecStd = CODEC_STD_THO;
 			break;
-		case NX_VPX_VP8:	//	VP8
+		case NX_VP8_DEC:	//	VP8
 			openArg.codecStd = CODEC_STD_VP8;
 			break;
 		default:
@@ -1066,8 +1066,8 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 	pstDecOut->isInterlace 	= decArg.isInterace;
 	pstDecOut->topFieldFirst= decArg.topFieldFirst;
 
-	if (decArg.numOfErrMBs == 0)
-		pstDecOut->outFrmReliable_0_100 = 100;
+	if ( decArg.numOfErrMBs == 0 )
+		pstDecOut->outFrmReliable_0_100 = (pstDecOut->outDecIdx < 0) ? (0) : (100);
 	else
 	{
 		int TotalMbNum = ((decArg.outWidth+15)>>4) * ((decArg.outHeight+15)>>4);
@@ -1133,7 +1133,7 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 
 	NX_RelMsg( 0, ("NX_VidDecDecodeFrame() Resol:%dx%d, picType=%d, imgIdx = %d\n", pstDecOut->width, pstDecOut->height, pstDecOut->picType, pstDecOut->outImgIdx) );
 	FUNC_OUT();
-	return 0;
+	return VID_ERR_NONE;
 }
 
 VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec )
@@ -1155,7 +1155,7 @@ VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec )
 	DecoderFlushTimeStamp( hDec );
 
 	FUNC_OUT();
-	return 0;
+	return VID_ERR_NONE;
 }
 
 VID_ERROR_E NX_VidDecClrDspFlag( NX_VID_DEC_HANDLE hDec, NX_VID_MEMORY_HANDLE hFrameBuf, int32_t iFrameIdx )
@@ -1377,7 +1377,6 @@ static int32_t AllocateDecoderMemory( NX_VID_DEC_HANDLE hDec )
 			}
 		}
 	}
-
 
 	hDec->hColMvBuffer = NX_AllocateMemory( mvSize*hDec->numFrameBuffers, 4096 );	//	Planar Lu/Cb/Cr
 	if( 0 == hDec->hColMvBuffer ){

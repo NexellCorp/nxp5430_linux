@@ -915,12 +915,12 @@ static int CodecIdToVpuType( int codecId, unsigned int fourcc )
 #if (ENABLE_THEORA)
 	else if( codecId == CODEC_ID_THEORA )
 	{
-		vpuCodecType = NX_VPX_THEORA;
+		vpuCodecType = NX_THEORA_DEC;
 	}
 #endif
 	else if( codecId == CODEC_ID_VP8 )
 	{
-		vpuCodecType = NX_VPX_VP8;
+		vpuCodecType = NX_VP8_DEC;
 	}
 	else
 	{
@@ -1070,7 +1070,7 @@ int dec_main( int argc, char *argv[] )
 
 #if (ENABLE_THEORA)
 	//	Intialize Theora Parser
-	if( vpuCodecType == NX_VPX_THEORA )
+	if( vpuCodecType == NX_THEORA_DEC )
 	{
 		theora_parser_init((void**)&pReader->theoraParser);
 	}
@@ -1304,7 +1304,7 @@ int dec_main( int argc, char *argv[] )
 
 #if (ENABLE_THEORA)
 	//	Intialize Theora Parser
-	if( vpuCodecType == NX_VPX_THEORA )
+	if( vpuCodecType == NX_THEORA_DEC )
 	{
 		theora_parser_end(pReader->theoraParser);
 	}
