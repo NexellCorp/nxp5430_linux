@@ -1,3 +1,5 @@
+ifeq ($(TARGET_CPU_VARIANT2),s5p6818)
+
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -21,3 +23,5 @@ LOCAL_MODULE := libnxmalloc
 LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_STATIC_LIBRARY)
+
+endif
