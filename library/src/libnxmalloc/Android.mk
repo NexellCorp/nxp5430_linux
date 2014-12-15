@@ -10,8 +10,8 @@ LOCAL_SHARED_LIBRARIES :=	\
 	libcutils
 
 LOCAL_C_INCLUDES += system/core/include/ion \
-					$(TOP)/hardware/nexell/pyrope/include \
-					$(TOP)/linux/nxp5430/library/include
+					$(TOP)/hardware/samsung_slsi/slsiap/include \
+					$(TOP)/linux/platform/s5p6818/library/include
 
 LOCAL_CFLAGS += 
 
