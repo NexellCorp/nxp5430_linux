@@ -1,0 +1,27 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros">
+    <ANDROID_ROOT>Z:\devel\android\kitkat-mr1</ANDROID_ROOT>
+    <ANDROID_TOOLCHAIN>$(ANDROID_ROOT)\prebuilts\ndk\current\platforms\android-18\arch-arm\usr\include</ANDROID_TOOLCHAIN>
+    <ANDROID_KERNEL>$(ANDROID_ROOT)\linux\kernel\kernel-3.4.39\include</ANDROID_KERNEL>
+    <ANDROID_INCS>$(ANDROID_ROOT)\system\core\include;$(ANDROID_ROOT)\frameworks\native\include;$(ANDROID_ROOT)\hardware\libhardware\include;</ANDROID_INCS>
+  </PropertyGroup>
+  <PropertyGroup />
+  <ItemDefinitionGroup />
+  <ItemGroup>
+    <BuildMacro Include="ANDROID_ROOT">
+      <Value>$(ANDROID_ROOT)</Value>
+    </BuildMacro>
+    <BuildMacro Include="ANDROID_TOOLCHAIN">
+      <Value>$(ANDROID_TOOLCHAIN)</Value>
+      <EnvironmentVariable>true</EnvironmentVariable>
+    </BuildMacro>
+    <BuildMacro Include="ANDROID_KERNEL">
+      <Value>$(ANDROID_KERNEL)</Value>
+    </BuildMacro>
+    <BuildMacro Include="ANDROID_INCS">
+      <Value>$(ANDROID_INCS)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

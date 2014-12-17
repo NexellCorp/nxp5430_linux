@@ -1,0 +1,271 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/time.h>	//	gettimeofday
+
+#ifdef ANDROID
+#include <ui/GraphicBuffer.h>
+#include <gui/Surface.h>
+#include <gui/ISurfaceComposer.h>
+#include <gui/SurfaceComposerClient.h>
+#include <cutils/log.h>
+
+#include <nxp-v4l2.h>
+#include <gralloc_priv.h>
+#include <ion-private.h>
+#include <nexell_format.h>
+#endif	//	ANDROID
+
+#include <nx_fourcc.h>
+#include <nx_alloc_mem.h>
+#include <nx_video_api.h>
+#include "MediaExtractor.h"
+#include "CodecInfo.h"
+
+#ifdef ANDROID
+using namespace android;
+#endif
+
+
+unsigned char streamBuffer[4*1024*1024];
+unsigned char seqData[1024*4];
+
+//	Display Window Screen Size
+#define	WINDOW_WIDTH		1280
+#define	WINDOW_HEIGHT		720
+#define	NUMBER_OF_BUFFER	12
+
+
+#ifdef ANDROID
+#include <linux/media.h>
+#include <linux/v4l2-subdev.h>
+#include <linux/v4l2-mediabus.h>
+#include <linux/videodev2.h>
+#include <linux/videodev2_nxp_media.h>
+#include <ion/ion.h>
+
+int32_t ConvertPrivateHandleVideoMemory( struct private_handle_t const *handle, NX_VID_MEMORY_INFO *memInfo )
+{
+	int ion_fd = ion_open();
+	memset(memInfo, 0, sizeof(NX_VID_MEMORY_INFO));
+    int ret = ion_get_phys(ion_fd, handle->share_fd, (long unsigned int *)&memInfo->luPhyAddr);
+	int vstride = ALIGN(handle->height, 16);
+
+	memInfo->fourCC    = FOURCC_MVS0;
+	memInfo->imgWidth  = handle->width;
+	memInfo->imgHeight = handle->height;
+	memInfo->cbPhyAddr = memInfo->luPhyAddr + handle->stride * vstride;
+	memInfo->crPhyAddr = memInfo->cbPhyAddr + ALIGN(handle->stride>>1,16) * ALIGN(vstride>>1,16);
+	memInfo->luStride  = handle->stride;
+	memInfo->cbStride  = 
+	memInfo->crStride  = handle->stride >> 1;;
+
+	close( ion_fd );
+	return 0;
+}
+#endif
+
+int32_t VpuDecMain( const char *fileName )
+{
+	int32_t vpuCodecType;
+	VID_ERROR_E vidRet;
+	NX_VID_SEQ_IN seqIn;
+	NX_VID_SEQ_OUT seqOut;
+	NX_VID_DEC_HANDLE hDec;
+	NX_VID_DEC_IN decIn;
+	NX_VID_DEC_OUT decOut;
+	int32_t seqSize = 0;
+	int32_t bInit=0;
+	int32_t readSize, frameCount = 0, outCount=0;
+	int32_t prevIdx = -1;
+	int32_t size, key = 0;
+	int64_t timeStamp = -1, outTimeStamp = -1;
+	int32_t needKey = 1;
+	int32_t mp4Class=0;
+	int32_t seqNeedMoreBuffer = 0;
+	int32_t tmpSize;
+	int32_t codecTag=-1, codecId=-1;
+	int32_t imgWidth=-1, imgHeight=-1;
+	int32_t instanceIdx;
+
+	NX_VID_MEMORY_INFO videoMemory[NUMBER_OF_BUFFER];
+	NX_VID_MEMORY_HANDLE hVideoMemory[NUMBER_OF_BUFFER];
+
+	CMediaReader *pMediaReader = new CMediaReader();
+	if( !pMediaReader->OpenFile( fileName ) )
+	{
+		printf("Cannot open media file(%s)\n", fileName);
+		exit(-1);
+	}
+	pMediaReader->GetVideoResolution(&imgWidth, &imgHeight);
+
+
+#ifdef ANDROID
+	int32_t err;
+    sp<SurfaceComposerClient> client = new SurfaceComposerClient();
+    sp<SurfaceControl> yuvSurfaceControl = 
+		client->createSurface(String8("YUV Surface"), WINDOW_WIDTH, WINDOW_HEIGHT, HAL_PIXEL_FORMAT_YV12, ISurfaceComposerClient::eFXSurfaceNormal);
+    if (yuvSurfaceControl == NULL) {
+        printf("failed to create yuv surface!!!");
+        return -1;
+    }
+    SurfaceComposerClient::openGlobalTransaction();
+    yuvSurfaceControl->show();
+    yuvSurfaceControl->setLayer(99999);
+    SurfaceComposerClient::closeGlobalTransaction();
+
+	sp<ANativeWindow> yuvWindow(yuvSurfaceControl->getSurface());
+    err = native_window_set_buffer_count(yuvWindow.get(), NUMBER_OF_BUFFER);
+    if (err) {
+        printf("failed to yuv native_window_set_buffer_count!!!\n");
+        return -1;
+    }
+    err = native_window_set_scaling_mode(yuvWindow.get(), NATIVE_WINDOW_SCALING_MODE_SCALE_TO_WINDOW);
+    if (err) {
+        printf("failed to yuv native_window_set_scaling_mode!!!\n");
+        return -1;
+    }
+    err = native_window_set_usage(yuvWindow.get(), GRALLOC_USAGE_HW_CAMERA_WRITE);
+    if (err) {
+        printf("failed to yuv native_window_set_usage!!!\n");
+        return -1;
+    }
+    err = native_window_set_buffers_geometry(yuvWindow.get(), imgWidth, imgHeight, HAL_PIXEL_FORMAT_YV12);
+    if (err) {
+        printf("failed to yuv native_window_set_buffers_geometry!!!\n");
+        return -1;
+    }
+
+    ANativeWindowBuffer *yuvANBuffer[NUMBER_OF_BUFFER];
+
+    for (int i = 0; i < NUMBER_OF_BUFFER; i++)
+    {
+        err = native_window_dequeue_buffer_and_wait(yuvWindow.get(), &yuvANBuffer[i]);
+        if (err) {
+            printf("failed to yuv dequeue buffer..\n");
+            return -1;
+        }
+
+		private_handle_t const *yuvHandle = reinterpret_cast<private_handle_t const *>(yuvANBuffer[i]->handle);
+		ConvertPrivateHandleVideoMemory(yuvHandle, &videoMemory[i] );
+		hVideoMemory[i] = &videoMemory[i];
+    }
+#else
+#endif	//	ANDROID
+
+	pMediaReader->GetCodecTagId( AVMEDIA_TYPE_VIDEO, &codecTag, &codecId  );
+
+	vpuCodecType = CodecIdToVpuType(codecId, codecTag);
+
+	mp4Class = fourCCToMp4Class( codecTag );
+	if( mp4Class == -1 )
+		mp4Class = codecIdToMp4Class( codecId );
+	mp4Class = 0;
+
+	printf("vpuCodecType = %d, mp4Class = %d\n", vpuCodecType, mp4Class );
+	if( NULL == (hDec = NX_VidDecOpen(vpuCodecType, mp4Class, 0, &instanceIdx)) )
+	{
+		printf("NX_VidDecOpen(%d) failed!!!\n", vpuCodecType);
+		return -1;
+	}
+
+	seqSize = pMediaReader->GetVideoSeqInfo( streamBuffer );
+
+	while( 1 )
+	{
+		//	ReadStream
+		if( 0 != pMediaReader->ReadStream( CMediaReader::MEDIA_TYPE_VIDEO, streamBuffer+seqSize, &size, &key, &timeStamp ) )
+		{
+			break;
+		}
+
+		
+		if( !bInit && !key )
+		{
+			continue;
+		}
+
+		if( !bInit )
+		{
+			memset( &seqIn, 0, sizeof(seqIn) );
+			seqIn.addNumBuffers = 4;
+			seqIn.enablePostFilter = 0;
+			seqIn.seqInfo = streamBuffer;
+			seqIn.seqSize = seqSize + size;
+			seqIn.enableUserData = 0;
+			seqIn.disableOutReorder = 0;
+#ifdef ANDROID
+			//	Use External Video Memory
+			seqIn.numBuffers = NUMBER_OF_BUFFER;
+			seqIn.pMemHandle = &hVideoMemory[0];
+#endif
+			vidRet = NX_VidDecInit( hDec, &seqIn, &seqOut );
+			if( vidRet == VID_NEED_STREAM )
+			{
+				printf("VPU Initialize Failed!!!\n");
+				break;
+			}
+
+			printf("<<<<<<<<<<< Init_Info >>>>>>>>>>>>>> \n");
+			printf("minBuffers = %d \n", seqOut.minBuffers);
+			printf("numBuffers = %d \n", seqOut.numBuffers);
+			printf("width = %d \n", seqOut.width);
+			printf("height = %d \n", seqOut.height);
+			printf("frameBufDelay = %d \n", seqOut.frameBufDelay);
+			printf("isInterace = %d \n", seqOut.isInterlace);
+			printf("userDataNum = %d \n", seqOut.userDataNum);
+			printf("userDataSize = %d \n", seqOut.userDataSize);
+			printf("userDataBufFull = %d \n", seqOut.userDataBufFull);
+			printf("frameRateNum = %d \n", seqOut.frameRateNum);
+			printf("frameRateDen = %d \n", seqOut.frameRateDen);
+			printf("vp8ScaleWidth = %d \n", seqOut.vp8ScaleWidth);
+			printf("vp8ScaleHeight = %d \n", seqOut.vp8ScaleHeight);
+			printf("unsupportedFeature = %d \n", seqOut.unsupportedFeature);
+
+
+			seqSize = 0;
+			bInit = 1;
+			size = 0;
+			continue;
+		}
+
+		memset(&decIn, 0, sizeof(decIn));
+		decIn.strmBuf = streamBuffer;
+		decIn.strmSize = size;
+		decIn.timeStamp = timeStamp;
+		decIn.eos = 0;
+		vidRet = NX_VidDecDecodeFrame( hDec, &decIn, &decOut );
+		if( vidRet == VID_NEED_STREAM )
+		{
+			printf("VID_NEED_MORE_BUF NX_VidDecDecodeFrame\n");
+			continue;
+		}
+		if( vidRet < 0 )
+		{
+			printf("Decoding Error!!!\n");
+			exit(-2);
+		}
+
+		if( decOut.outImgIdx >= 0  )
+		{
+			printf("outImgIdx = %d\n", decOut.outImgIdx);
+#ifdef ANDROID
+		    yuvWindow->queueBuffer(yuvWindow.get(), yuvANBuffer[decOut.outImgIdx], -1);
+			if( prevIdx != -1 )
+			{
+			    ANativeWindowBuffer *yuvTempBuffer;
+				native_window_dequeue_buffer_and_wait(yuvWindow.get(), &yuvTempBuffer);
+			}
+#else
+#endif
+			outCount ++;
+			if( prevIdx != -1 )
+			{
+				NX_VidDecClrDspFlag( hDec, &decOut.outImg, prevIdx );
+			}
+			prevIdx = decOut.outImgIdx;
+		}
+	}
+	NX_VidDecClose( hDec );
+	return 0;
+}
