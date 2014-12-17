@@ -54,9 +54,9 @@ enum {
 #if 0
 int SetTiledMapType(int tiledMapType, int width, int interleave)
 {
-	int luma_map; 
+	int luma_map;
 	int chro_map;
-	int i;	
+	int i;
 
 	sTiledInfo.MapType = tiledMapType;
 	//         inv = 1'b0, zero = 1'b1 , tbxor = 1'b0, xy = 1'b0, bit = 4'd0
@@ -75,11 +75,11 @@ int SetTiledMapType(int tiledMapType, int width, int interleave)
 		sTiledInfo.xy2ra_map[i] = luma_map << 8 | chro_map;
 	}
 
-	if (tiledMapType == VPU_LINEAR_FRAME_MAP) 
+	if (tiledMapType == VPU_LINEAR_FRAME_MAP)
 	{
 		sTiledInfo.xy2rbc_config = 0;
-	} 
-	else if (tiledMapType == VPU_TILED_FRAME_V_MAP) 
+	}
+	else if (tiledMapType == VPU_TILED_FRAME_V_MAP)
 	{
 		//cas
 		sTiledInfo.xy2ca_map[0] = XY2(Y_SEL, 0, Y_SEL, 0);
@@ -112,9 +112,9 @@ int SetTiledMapType(int tiledMapType, int width, int interleave)
 		sTiledInfo.xy2ra_map[12] = XY2(Y_SEL,15, Y_SEL,15);
 
 		//xy2rbc_config
-		sTiledInfo.xy2rbc_config = XY2CONFIG(0,0,0,1,1,15,0,15,0); 
+		sTiledInfo.xy2rbc_config = XY2CONFIG(0,0,0,1,1,15,0,15,0);
 
-	} 
+	}
 	else if (tiledMapType == VPU_TILED_FRAME_H_MAP)
 	{
 		//cas
@@ -149,7 +149,7 @@ int SetTiledMapType(int tiledMapType, int width, int interleave)
 		//xy2rbc_config
 		sTiledInfo.xy2rbc_config = XY2CONFIG(0,0,0,1,0,15,15,15,15);
 
-	} 
+	}
 	else if (tiledMapType == VPU_TILED_FIELD_V_MAP)
 	{
 		//cas
@@ -184,7 +184,7 @@ int SetTiledMapType(int tiledMapType, int width, int interleave)
 
 		//xy2rbc_config
 		sTiledInfo.xy2rbc_config = XY2CONFIG(0,1,1,1,1,15,15,15,15);
-	} 
+	}
 	else if (tiledMapType == VPU_TILED_MIXED_V_MAP)
 	{
 		//cas
@@ -240,7 +240,7 @@ int SetTiledMapType(int tiledMapType, int width, int interleave)
 		//xy2rbc_config
 		sTiledInfo.xy2rbc_config = XY2CONFIG(0,1,1,1,1,7,7,3,3);
 	}
-	else 
+	else
 	{
 		NX_ErrMsg(("tiledMapType is %d >-- Error\n",tiledMapType));
 		return 0;
@@ -365,7 +365,7 @@ int SetTiledMapType(int tiledMapType, int width, int interleave)
 	}
 
 	for (i=0; i<16; i++) { //xy2ra_map
-		VpuWriteReg(GDI_XY2_RAS_0 + 4*i, sTiledInfo.xy2ra_map[i]);		
+		VpuWriteReg(GDI_XY2_RAS_0 + 4*i, sTiledInfo.xy2ra_map[i]);
 	}
 
 	//xy2rbc_config
@@ -407,7 +407,7 @@ typedef struct {
 	int  rasBit;
 	int  casBit;
 	int  bankBit;
-	int  busBit;	
+	int  busBit;
 } DRAMConfig;
 
 
@@ -421,7 +421,7 @@ typedef struct {
 int SetTiledMapType(int mapType, int stride, int interleave)
 {
 	int ret;
-	int luma_map; 
+	int luma_map;
 	int chro_map;
 	int i;
 	TiledMapConfig mapCfg;
@@ -533,16 +533,16 @@ int SetTiledMapType(int mapType, int stride, int interleave)
 		ret = 1;
 	}
 
-	for (i=0; i<16; i++) { //xy2ca_map		
-		VpuWriteReg(GDI_XY2_CAS_0 + 4*i, mapCfg.xy2caMap[i]);	
+	for (i=0; i<16; i++) { //xy2ca_map
+		VpuWriteReg(GDI_XY2_CAS_0 + 4*i, mapCfg.xy2caMap[i]);
 	}
 
-	for (i=0; i<4; i++) { //xy2baMap		
+	for (i=0; i<4; i++) { //xy2baMap
 		VpuWriteReg(GDI_XY2_BA_0  + 4*i, mapCfg.xy2baMap[i]);
 	}
 
 	for (i=0; i<16; i++) { //xy2raMap
-		VpuWriteReg(GDI_XY2_RAS_0 + 4*i, mapCfg.xy2raMap[i]);		
+		VpuWriteReg(GDI_XY2_RAS_0 + 4*i, mapCfg.xy2raMap[i]);
 	}
 
 	//xy2rbcConfig
@@ -644,13 +644,13 @@ NX_VPU_RET ConfigEncSecAXI(int codStd, SecAxiInfo *sa, int width, int height )
 	if( sa->useBitEnable )
 	{
 		sa->bufBitUse = sramPhyAddr + offset;
-		if( CODEC_STD_AVC == codStd ) 
+		if( CODEC_STD_AVC == codStd )
 		{
-			offset = offset + MbNumX * 144; 
+			offset = offset + MbNumX * 144;
 		}
 		else
 		{
-			offset = offset + MbNumX *  16; 
+			offset = offset + MbNumX *  16;
 		}
 	}
 
@@ -669,9 +669,9 @@ NX_VPU_RET ConfigEncSecAXI(int codStd, SecAxiInfo *sa, int width, int height )
 		{
 			offset = offset+ (MbNumX * 64);
 		}
-		else if( CODEC_STD_H263 == codStd ) 
+		else if( CODEC_STD_H263 == codStd )
 		{
-			offset = offset + MbNumX * 128; 
+			offset = offset + MbNumX * 128;
 		}
 	}
 
@@ -683,9 +683,9 @@ NX_VPU_RET ConfigEncSecAXI(int codStd, SecAxiInfo *sa, int width, int height )
 		{
 			offset = offset+ (MbNumX * 64);
 		}
-		else if( CODEC_STD_H263 == codStd ) 
+		else if( CODEC_STD_H263 == codStd )
 		{
-			offset = offset + MbNumX * 128; 
+			offset = offset + MbNumX * 128;
 		}
 	}
 	sa->bufSize = offset;
@@ -772,10 +772,10 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 		sa->useBitEnable = 1;
 		sa->bufBitUse = sramPhyAddr + offset;
 
-		switch (codStd) 
+		switch (codStd)
 		{
 		case CODEC_STD_AVC:
-			offset = offset + MbNumX * 144; 
+			offset = offset + MbNumX * 144;
 			break; // AVC
 		case CODEC_STD_RV:
 			offset = offset + MbNumX * 128;
@@ -784,16 +784,16 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 			offset = offset + MbNumX *  64;
 			break;
 		case CODEC_STD_AVS:
-			offset = offset + (MbNumX + (MbNumX%4)) *  32; 
+			offset = offset + (MbNumX + (MbNumX%4)) *  32;
 			break;
 		case CODEC_STD_MPEG2:
-			offset = offset + MbNumX * 0; 
+			offset = offset + MbNumX * 0;
 			break;
 		case CODEC_STD_VP8:
-			offset = offset + MbNumX * 128; 
+			offset = offset + MbNumX * 128;
 			break;
 		default:
-			offset = offset + MbNumX *  16; 
+			offset = offset + MbNumX *  16;
 			break; // MPEG-4, Divx3
 		}
 
@@ -801,7 +801,7 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 		{
 			sa->bufSize = 0;
 			return 0;
-		}	
+		}
 
 	}
 
@@ -811,10 +811,10 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 		sa->bufIpAcDcUse = sramPhyAddr + offset;
 		sa->useIpEnable = 1;
 
-		switch (codStd) 
+		switch (codStd)
 		{
 		case CODEC_STD_AVC:
-			offset = offset + MbNumX * 64; 
+			offset = offset + MbNumX * 64;
 			break; // AVC
 		case CODEC_STD_RV:
 			offset = offset + MbNumX * 64;
@@ -826,13 +826,13 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 			offset = offset + MbNumX * 64;
 			break;
 		case CODEC_STD_MPEG2:
-			offset = offset + MbNumX * 0; 
+			offset = offset + MbNumX * 0;
 			break;
 		case CODEC_STD_VP8:
-			offset = offset + MbNumX * 64; 
+			offset = offset + MbNumX * 64;
 			break;
 		default:
-			offset = offset + MbNumX * 128; 
+			offset = offset + MbNumX * 128;
 			break; // MPEG-4, Divx3
 		}
 
@@ -840,7 +840,7 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 		{
 			sa->bufSize = 0;
 			return 0;
-		}		
+		}
 	}
 
 
@@ -849,45 +849,7 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 	{
 		sa->bufDbkCUse = sramPhyAddr + offset;
 		sa->useDbkCEnable = 1;
-		switch (codStd) 
-		{
-		case CODEC_STD_AVC:
-			offset = offset + (MbNumX * 128);			
-			break; // AVC
-		case CODEC_STD_RV:
-			offset = offset + MbNumX * 128;
-			break;
-		case CODEC_STD_VC1:
-			offset = offset + MbNumX * 256;
-			break;
-		case CODEC_STD_AVS:
-			offset = offset + MbNumX * 128;
-			break;
-		case CODEC_STD_MPEG2:
-			offset = offset + MbNumX * 64; 
-			break;
-		case CODEC_STD_VP8:
-			offset = offset + MbNumX * 128; 
-			break;
-		default:
-			offset = offset + MbNumX * 64; 
-			break;
-		}
-
-		if (offset > sramSize)
-		{
-			sa->bufSize = 0;
-			return 0;
-		}		
-	}
-
-	//Deblock Luma
-	if (sa->useDbkYEnable)
-	{
-		sa->bufDbkYUse = sramPhyAddr + offset;
-		sa->useDbkYEnable = 1;
-
-		switch (codStd) 
+		switch (codStd)
 		{
 		case CODEC_STD_AVC:
 			offset = offset + (MbNumX * 128);
@@ -902,13 +864,13 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 			offset = offset + MbNumX * 128;
 			break;
 		case CODEC_STD_MPEG2:
-			offset = offset + MbNumX * 128; 
+			offset = offset + MbNumX * 64;
 			break;
 		case CODEC_STD_VP8:
-			offset = offset + MbNumX * 128; 
+			offset = offset + MbNumX * 128;
 			break;
 		default:
-			offset = offset + MbNumX * 128; 
+			offset = offset + MbNumX * 64;
 			break;
 		}
 
@@ -916,7 +878,45 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 		{
 			sa->bufSize = 0;
 			return 0;
-		}		
+		}
+	}
+
+	//Deblock Luma
+	if (sa->useDbkYEnable)
+	{
+		sa->bufDbkYUse = sramPhyAddr + offset;
+		sa->useDbkYEnable = 1;
+
+		switch (codStd)
+		{
+		case CODEC_STD_AVC:
+			offset = offset + (MbNumX * 128);
+			break; // AVC
+		case CODEC_STD_RV:
+			offset = offset + MbNumX * 128;
+			break;
+		case CODEC_STD_VC1:
+			offset = offset + MbNumX * 256;
+			break;
+		case CODEC_STD_AVS:
+			offset = offset + MbNumX * 128;
+			break;
+		case CODEC_STD_MPEG2:
+			offset = offset + MbNumX * 128;
+			break;
+		case CODEC_STD_VP8:
+			offset = offset + MbNumX * 128;
+			break;
+		default:
+			offset = offset + MbNumX * 128;
+			break;
+		}
+
+		if (offset > sramSize)
+		{
+			sa->bufSize = 0;
+			return 0;
+		}
 	}
 
 	//VC1 Bit-plane
@@ -924,13 +924,13 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 	{
 		if (codStd != CODEC_STD_VC1)
 		{
-			sa->useBtpEnable = 0;			
+			sa->useBtpEnable = 0;
 		}
 		else
 		{
 			int oneBTP;
 
-			offset = ((offset+255)&~255);			
+			offset = ((offset+255)&~255);
 			sa->bufBtpUse = sramPhyAddr + offset;
 			sa->useBtpEnable = 1;
 
@@ -947,7 +947,7 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 	{
 		if (codStd != CODEC_STD_VC1)
 		{
-			sa->useOvlEnable = 0;			
+			sa->useOvlEnable = 0;
 		}
 		else
 		{
@@ -955,7 +955,7 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 			sa->useOvlEnable = 1;
 
 			offset = offset + MbNumX *  80;
-		}		
+		}
 	}
 
 	sa->bufSize = offset;
@@ -977,7 +977,7 @@ int ConfigDecSecAXI(int codStd, SecAxiInfo *sa, int width, int height)
 
 // Maverick Cache II
 unsigned int MaverickCache2Config(int decoder , int interleave, int bypass, int burst, int merge, int mapType, int wayshape)
-{    
+{
 	unsigned int cacheConfig = 0;
 
 	if(decoder) // decoder
@@ -996,11 +996,11 @@ unsigned int MaverickCache2Config(int decoder , int interleave, int bypass, int 
 			//GDI constraint. Width should not be over 64
 			if (( merge== 1) && (burst))
 				burst = 0;
-		} 
-		else 
+		}
+		else
 		{
 			//horizontal merge constraint in tiled map
-			if (merge == 1) 
+			if (merge == 1)
 				merge = 3;
 		}
 	}
@@ -1012,12 +1012,12 @@ unsigned int MaverickCache2Config(int decoder , int interleave, int bypass, int 
 			//GDI constraint. Width should not be over 64
 			if ((merge == 1) && (burst))
 				burst= 0;
-		} 
-		else 
+		}
+		else
 		{
 			//horizontal merge constraint in tiled map
 			if (merge == 1)
-				merge = 3; 
+				merge = 3;
 		}
 
 	}
@@ -1043,21 +1043,21 @@ static int GetXY2RBCLogic(int map_val,int xpos,int ypos, int tb)
 	int tbxor;
 	int xysel;
 	int bitsel;
-	
+
 	int xypos,xybit,xybit_st1,xybit_st2,xybit_st3;
-	
+
 	invert		= map_val >> 7;
 	assign_zero = (map_val & 0x78) >> 6;
 	tbxor		= (map_val & 0x3C) >> 5;
 	xysel		= (map_val & 0x1E) >> 4;
-	bitsel		= map_val & 0x0f; 
-	
+	bitsel		= map_val & 0x0f;
+
 	xypos     = (xysel) ? ypos : xpos;
 	xybit     = (xypos >> bitsel) & 0x01;
 	xybit_st1 = (tbxor)       ? xybit^tb : xybit;
 	xybit_st2 = (assign_zero) ? 0 : xybit_st1;
 	xybit_st3 = (invert)      ? !xybit_st2 : xybit_st2;
-	
+
 	return xybit_st3;
 }
 
@@ -1067,19 +1067,19 @@ static int rbc2axi_logic(int map_val , int ra_in, int ba_in, int ca_in)
 	int rst_bit ;
 	int rbc_sel = map_val >> 4;
 	int bit_sel = map_val & 0x0f;
-	
-	
+
+
 	if (rbc_sel == 0)
 		rbc = ca_in;
 	else if (rbc_sel == 1)
 		rbc = ba_in;
 	else if (rbc_sel == 2)
 		rbc = ra_in;
-	else 
+	else
 		rbc = 0;
-	
+
 	rst_bit = ((rbc >> bit_sel) & 1);
-	
+
 	return rst_bit;
 }
 #endif
@@ -1091,7 +1091,7 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
    	int ypos_mod;
 	int temp;
 	int temp_bit;
-	int i;	
+	int i;
 	int tb;
 	int ra_base;
 	int ras_base;
@@ -1121,12 +1121,12 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
 	Addr = ycbcr == 0 ? fb->bufY  :
 		   ycbcr == 2 ? fb->bufCb : fb->bufCr;
 
-	if (sTiledInfo.MapType == LINEAR_FRAME_MAP) 
+	if (sTiledInfo.MapType == LINEAR_FRAME_MAP)
 		return ((posY * stride) + posX) + Addr;
 
 	// 20bit = AddrY [31:12]
-	lum_top_base =   fb->bufY >> 12; 
-	
+	lum_top_base =   fb->bufY >> 12;
+
 	// 20bit = AddrY [11: 0], AddrCb[31:24]
 	chr_top_base = ((fb->bufY  & 0xfff) << 8) | ((fb->bufCb >> 24) & 0xff);  //12bit +  (32-24) bit
 
@@ -1136,7 +1136,7 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
 	// 20bit = AddrCb[ 3: 0], AddrCr[31:16]
 	chr_bot_base =  ((fb->bufCb & 0xf) << 16) | ((fb->bufCr >> 16) & 0xffff);
 
-	
+
  	if (sTiledInfo.MapType == TILED_FRAME_MB_RASTER_MAP || sTiledInfo.MapType == TILED_FIELD_MB_RASTER_MAP)
 	{
 		if (ycbcr == 0)
@@ -1150,15 +1150,15 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
 			mby = posY/8;
 		}
 
-		mb_addr = (stride/16) * mby + mbx;		
-		
+		mb_addr = (stride/16) * mby + mbx;
+
 		// ca[7:0]
 		for (i=0 ; i<8; i++)
 		{
 			if (ycbcr==2 || ycbcr == 3)
-				temp = sTiledInfo.xy2ca_map[i] & 0xff; 
-			else 
-				temp = sTiledInfo.xy2ca_map[i] >> 8;				
+				temp = sTiledInfo.xy2ca_map[i] & 0xff;
+			else
+				temp = sTiledInfo.xy2ca_map[i] >> 8;
 			temp_bit = GetXY2RBCLogic(temp,posX,ypos_mod,tb);
 			ca_conv  = ca_conv + (temp_bit << i);
 		}
@@ -1175,7 +1175,7 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
 
 			temp_val12bit = sTiledInfo.rbc2axi_map[i];
 			temp_val6bit  = (ycbcr == 0 ) ? (temp_val12bit >> 6) : (temp_val12bit & 0x3f);
-			
+
 			temp_bit = rbc2axi_logic(temp_val6bit,ra_conv,ba_conv,ca_conv);
 
 			pix_addr =  pix_addr + (temp_bit<<i);
@@ -1188,28 +1188,28 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
 
 		pix_addr = pix_addr + (mb_raster_base << 12);
 	}
-	else	
-	{			
+	else
+	{
 		// ca
 		for (i=0 ; i<16; i++)
 		{
-			if (ycbcr==0 || ycbcr==1) 
+			if (ycbcr==0 || ycbcr==1)
 				temp = sTiledInfo.xy2ca_map[i] >> 8;
-			else 
-				temp = sTiledInfo.xy2ca_map[i] & 0xff;	
-			
+			else
+				temp = sTiledInfo.xy2ca_map[i] & 0xff;
+
 			temp_bit = GetXY2RBCLogic(temp,posX,ypos_mod,tb);
 			ca_conv  = ca_conv + (temp_bit << i);
 		}
-		
+
 		// ba
 		for (i=0 ; i<4; i++)
 		{
 			if (ycbcr==2 || ycbcr == 3)
-				temp = sTiledInfo.xy2ba_map[i] & 0xff;	
+				temp = sTiledInfo.xy2ba_map[i] & 0xff;
 			else
 				temp = sTiledInfo.xy2ba_map[i] >> 8;
-			
+
 			temp_bit = GetXY2RBCLogic(temp,posX,ypos_mod,tb);
 			ba_conv  = ba_conv + (temp_bit << i);
 		}
@@ -1218,14 +1218,14 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
 		for (i=0 ; i<16; i++)
 		{
 			if (ycbcr==2 || ycbcr == 3)
-				temp = sTiledInfo.xy2ra_map[i] & 0xff;	
+				temp = sTiledInfo.xy2ra_map[i] & 0xff;
 			else
 				temp = sTiledInfo.xy2ra_map[i] >> 8;
-			
+
 			temp_bit = GetXY2RBCLogic(temp,posX,ypos_mod,tb);
 			ra_conv  = ra_conv + (temp_bit << i);
 		}
-		
+
 		if (sTiledInfo.tb_separate_map == 1 && tb == 1)
 			ras_base = Addr >> 16;
 		else
@@ -1233,20 +1233,20 @@ int GetXY2AXI_ADDR(int ycbcr, int intlv, int posY, int posX, int stride, FrameBu
 
 		ra_base  = ra_conv + ras_base;
 		pix_addr = 0;
-		
+
 		// ra,ba,ca -> axi
 		for (i=0; i<32; i++) {
 
 			temp_val12bit = sTiledInfo.rbc2axi_map[i];
 			temp_val6bit  = (ycbcr == 0 ) ? (temp_val12bit >> 6) : (temp_val12bit & 0x3f);
-			
+
 			temp_bit = rbc2axi_logic(temp_val6bit,ra_base,ba_conv,ca_conv);
 
 			pix_addr = pix_addr + (temp_bit<<i);
 		}
 		pix_addr += VpuReadReg(GDI_TILEDBUF_BASE);	// this register is assigned in StartOneFrame
 	}
-	
+
 	//printf("ycbcr[%d], intlv[%d], ypos[%d], xpos[%d], stride[%d], base_addr[%x], pix_addr[%x], ca[%x], ba[%x], ra[%x], ra_base[%x]",
 	//	ycbcr, 0, posY , posX ,stride ,Addr ,pix_addr, ca_conv, ba_conv, ra_conv, ra_base);
 	return pix_addr;

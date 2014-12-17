@@ -16,11 +16,11 @@
 #include <linux/pm.h>
 #include <linux/mutex.h>
 #include <mach/soc.h>
-#if defined (CONFIG_ARCH_NXP5430)
-#include <mach/nxp5430.h>
+#if defined (CONFIG_ARCH_S5P6818)
+#include <mach/s5p6818.h>
 #endif
-#if defined (CONFIG_ARCH_NXP4330)
-#include <mach/nxp4330.h>
+#if defined (CONFIG_ARCH_S5P4418)
+#include <mach/s5p4418.h>
 #endif
 #include <mach/devices.h>
 
@@ -55,7 +55,7 @@
 
 
 #define	ENABLE_INTERRUPT_MODE
-#define	OPEN_INFO_MSG			0
+#define	INFO_MSG			0
 
 //-----------------------------------------------------------------------------
 //		Macro & Definitions
@@ -127,7 +127,7 @@ static int swap_endian(unsigned char *data, int len);
 
 #define	POWER_PMU_VPU_MASK		0x00000002
 
-#if defined (CONFIG_ARCH_NXP5430)
+#if defined (CONFIG_ARCH_S5P6818)
 #define	TIEOFF_REG131			0xF001120C
 #define	VPU_ASYNCXUI1_CACTIVE	(1<<17)
 #define	VPU_ASYNCXUI1_CSYSACK	(1<<16)
@@ -236,18 +236,10 @@ void NX_VPU_HwOn(void)
 		return;
 	}
 
-#if defined (CONFIG_ARCH_NXP5430)
 	//	H/W Reset
 	nxp_soc_peri_reset_enter(RESET_ID_CODA_C);			//	63
 	nxp_soc_peri_reset_enter(RESET_ID_CODA_A);			//	61
 	nxp_soc_peri_reset_enter(RESET_ID_CODA_P);			//	62
-#endif
-#if defined (CONFIG_ARCH_NXP4330)
-	//	H/W Reset
-	nxp_soc_rsc_enter(RESET_ID_CODA_C);			//	63
-	nxp_soc_rsc_enter(RESET_ID_CODA_A);			//	61
-	nxp_soc_rsc_enter(RESET_ID_CODA_P);			//	62
-#endif
 
 	VpuWriteReg( VPU_ALIVEGATE_REG,  0x3 );
 
@@ -270,19 +262,13 @@ void NX_VPU_HwOn(void)
 
 	NX_VPU_Clock( 1 );
 
-#if defined (CONFIG_ARCH_NXP5430)
+#if defined (CONFIG_ARCH_S5P6818)
 	NX_ASYNCXUI_PowerUp();
+#endif
 	//	Release Reset
 	nxp_soc_peri_reset_exit(RESET_ID_CODA_P);			//	62
 	nxp_soc_peri_reset_exit(RESET_ID_CODA_A);			//	61
 	nxp_soc_peri_reset_exit(RESET_ID_CODA_C);			//	63
-#endif
-#if defined (CONFIG_ARCH_NXP4330)
-	//	Release Reset
-	nxp_soc_rsc_exit(RESET_ID_CODA_P);			//	62
-	nxp_soc_rsc_exit(RESET_ID_CODA_A);			//	61
-	nxp_soc_rsc_exit(RESET_ID_CODA_C);			//	63
-#endif
 
 	gstIsVPUOn = 1;
 
@@ -296,22 +282,13 @@ void NX_VPU_HWOff(void)
 	{
 		unsigned int tmpVal;
 
-#if defined (CONFIG_ARCH_NXP5430)
+#if defined (CONFIG_ARCH_S5P6818)
 		NX_ASYNCXUI_PowerDown();
 #endif
-
-#if defined (CONFIG_ARCH_NXP5430)
 		//	H/W Reset
 		nxp_soc_peri_reset_enter(RESET_ID_CODA_C);			//	63
 		nxp_soc_peri_reset_enter(RESET_ID_CODA_A);			//	61
 		nxp_soc_peri_reset_enter(RESET_ID_CODA_P);			//	62
-#endif
-#if defined (CONFIG_ARCH_NXP4330)
-		//	H/W Reset
-		nxp_soc_rsc_enter(RESET_ID_CODA_C);			//	63
-		nxp_soc_rsc_enter(RESET_ID_CODA_A);			//	61
-		nxp_soc_rsc_enter(RESET_ID_CODA_P);			//	62
-#endif
 
 		NX_DbgMsg( DBG_POWER, ("NX_VPU_HWOff() ++\n") );
 
@@ -495,11 +472,12 @@ static int VPU_WaitBitInterrupt(int mSeconds)
 	{
 		reason=VpuReadReg(BIT_INT_REASON);
 		VpuWriteReg(BIT_INT_REASON, 0);
-		NX_ErrMsg(("VPU_WaitVpuInterrupt() TimeOut!!!(reason = 0x%.8x, CurPC = %x %x %x )\n", reason, VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC) ));
+		NX_ErrMsg(("VPU_WaitVpuInterrupt() TimeOut!!!(reason = 0x%.8x, CurPC(0xBD 0xBF : %x %x %x))\n", reason, VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC) ));
 		return 0;
 	}
 	else
 	{
+		//NX_ErrMsg(("Success CurPC = %x %x %x\n", VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC), VpuReadReg(BIT_CUR_PC) ));
 		VpuWriteReg(BIT_INT_CLEAR, 1);		// clear HW signal
 		reason=VpuReadReg(BIT_INT_REASON);
 		VpuWriteReg(BIT_INT_REASON, 0);
@@ -572,7 +550,7 @@ void CheckVersion(void)
 		(unsigned int)(version>>16), (unsigned int)((version>>(12))&0x0f),
 		(unsigned int)((version>>(8))&0x0f), (unsigned int)((version)&0xff), revision) );
 	NX_DbgMsg( 0, ("Hardware Version => %04x\n", productId));
-	NX_DbgMsg( 1, ("Build Date : %s, %s\n", __DATE__, __TIME__));
+	NX_DbgMsg( INFO_MSG, ("Build Date : %s, %s\n", __DATE__, __TIME__));
 }
 
 
@@ -953,7 +931,7 @@ NX_VPU_RET	NX_VpuEncSetSeqParam( NX_VPU_INST_HANDLE handle, VPU_ENC_SEQ_ARG *seq
 
 	encInfo->EncCodecParam.avcEncParam.audEnable = seqArg->enableAUDelimiter;
 
-	NX_DbgMsg(1, ("NX_VpuEncSetSeqParam() : %dx%d, %d/%d fps, %d kbps (gop(%d), maxQ(%d), SR(%d), StreamBuffer(0x%08x, 0x%08x))\n",
+	NX_DbgMsg(INFO_MSG, ("NX_VpuEncSetSeqParam() : %dx%d, %d/%d fps, %d kbps (gop(%d), maxQ(%d), SR(%d), StreamBuffer(0x%08x, 0x%08x))\n",
 		encInfo->srcWidth, encInfo->srcHeight, encInfo->frameRateNum, encInfo->frameRateDen, encInfo->bitRate,
 		encInfo->gopSize, encInfo->userQpMax, encInfo->MESearchRange, encInfo->strmBufPhyAddr, encInfo->strmBufVirAddr));
 
@@ -1341,7 +1319,7 @@ static NX_VPU_RET VPU_EncSeqCommand(NX_VpuCodecInst *pInst)
 	pEncInfo->strmWritePrt = VpuReadReg(BIT_WR_PTR);
 	pEncInfo->strmEndFlag = VpuReadReg(BIT_BIT_STREAM_PARAM);
 
-	NX_DbgMsg( 0, ("VPU_EncSeqCommand() Success : Writer Ptr = 0x%08x, Stream End Flag = %d\n",
+	NX_DbgMsg( INFO_MSG, ("VPU_EncSeqCommand() Success : Writer Ptr = 0x%08x, Stream End Flag = %d\n",
 		pEncInfo->strmWritePrt, pEncInfo->strmEndFlag) );
 
 	pInst->isInitialized = 1;
@@ -1665,7 +1643,7 @@ static NX_VPU_RET VPU_EncOneFrameCommand( NX_VpuCodecInst *pInst, VPU_ENC_RUN_FR
 	runArg->frameType = ( (picType&0x1) == 0 ) ? 1 : 0;
 	runArg->outStreamSize = size;
 	runArg->outStreamAddr = (unsigned char*)pEncInfo->strmBufVirAddr;
-	NX_DbgMsg( 0, ("Encoded Size = %d, PicType = %d, picFlag = %d, sliceNumber = %d\n", size, picType, picFlag, sliceNumber) );
+	NX_DbgMsg( INFO_MSG, ("Encoded Size = %d, PicType = %d, picFlag = %d, sliceNumber = %d\n", size, picType, picFlag, sliceNumber) );
 
 	return VPU_RET_OK;
 }
@@ -1968,13 +1946,13 @@ NX_VPU_RET	NX_VpuDecOpen( VPU_OPEN_ARG *openArg, void *drvHandle, NX_VPU_INST_HA
 
 	*handle = hInst;
 
-	NX_DbgMsg( OPEN_INFO_MSG, ("===================================\n") );
-	NX_DbgMsg( OPEN_INFO_MSG, (" VPU Open Informations:\n") );
-	NX_DbgMsg( OPEN_INFO_MSG, ("  Instance Index : %d\n", hInst->instIndex        ) );
-	NX_DbgMsg( OPEN_INFO_MSG, ("  BitStream Mode : %d\n", pDecInfo->bitstreamMode ) );
-	NX_DbgMsg( OPEN_INFO_MSG, ("  Codec Standard : %d\n", hInst->codecMode        ) );
-	NX_DbgMsg( OPEN_INFO_MSG, ("  Codec AUX Mode : %d\n", hInst->auxMode          ) );
-	NX_DbgMsg( OPEN_INFO_MSG, ("===================================\n") );
+	NX_DbgMsg( INFO_MSG, ("===================================\n") );
+	NX_DbgMsg( INFO_MSG, (" VPU Open Informations:\n") );
+	NX_DbgMsg( INFO_MSG, ("  Instance Index : %d\n", hInst->instIndex        ) );
+	NX_DbgMsg( INFO_MSG, ("  BitStream Mode : %d\n", pDecInfo->bitstreamMode ) );
+	NX_DbgMsg( INFO_MSG, ("  Codec Standard : %d\n", hInst->codecMode        ) );
+	NX_DbgMsg( INFO_MSG, ("  Codec AUX Mode : %d\n", hInst->auxMode          ) );
+	NX_DbgMsg( INFO_MSG, ("===================================\n") );
 
 	FUNCOUT();
 	return VPU_RET_OK;

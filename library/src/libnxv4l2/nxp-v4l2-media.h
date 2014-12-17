@@ -136,7 +136,7 @@ int	v4l2_streamon(V4L2_PRIVATE_HANDLE pHandle, int id);
 int	v4l2_streamoff(V4L2_PRIVATE_HANDLE pHandle, int id);
 int	v4l2_get_timestamp(V4L2_PRIVATE_HANDLE pHandle, int id, long long *timestamp);
 int	v4l2_set_preset(V4L2_PRIVATE_HANDLE pHandle, int id, uint32_t preset);
-
+int v4l2_get_device_fd(V4L2_PRIVATE_HANDLE pHandle, int id);
 #ifndef ANDROID
 #ifdef __cplusplus
 }

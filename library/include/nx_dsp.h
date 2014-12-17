@@ -39,8 +39,7 @@ enum {
 	DISPLAY_MODULE_MLC1			= 0x01,
 };
 
-typedef struct DSP_IMG_RECT
-{
+typedef struct DSP_IMG_RECT {
 	int32_t		left;
 	int32_t		top;
 	int32_t		right;
@@ -67,23 +66,22 @@ typedef struct DISPLAY_HANDLE_INFO	*DISPLAY_HANDLE;
 extern "C"{
 #endif
 
-DISPLAY_HANDLE	NX_DspInit			( DISPLAY_INFO *pDspInfo );
-void			NX_DspClose			( DISPLAY_HANDLE hDisplay );
-int32_t			NX_DspStreamControl	( DISPLAY_HANDLE hDisplay, int32_t enable );	
+DISPLAY_HANDLE	NX_DspInit					( DISPLAY_INFO *pDspInfo );
+void			NX_DspClose					( DISPLAY_HANDLE hDisplay );
+int32_t			NX_DspStreamControl			( DISPLAY_HANDLE hDisplay, int32_t bEnable );	
 
-int32_t			NX_DspQueueBuffer	( DISPLAY_HANDLE hDisplay, NX_VID_MEMORY_INFO *pVidBuf );
-int32_t			NX_DspDequeueBuffer	( DISPLAY_HANDLE hDisplay );
+int32_t			NX_DspQueueBuffer			( DISPLAY_HANDLE hDisplay, NX_VID_MEMORY_INFO *pVidBuf );
+int32_t			NX_DspDequeueBuffer			( DISPLAY_HANDLE hDisplay );
 
-int32_t			NX_DspVideoPosition ( DISPLAY_HANDLE hDisplay, int32_t left, int32_t top, int32_t right, int32_t bottom );
+int32_t			NX_DspVideoSetSourceFormat 	( DISPLAY_HANDLE hDisplay, int32_t width, int32_t height, int32_t stride, int32_t fourcc );
+int32_t			NX_DspVideoSetSourceCrop	( DISPLAY_HANDLE hDisplay, DSP_IMG_RECT *pRect );
+int32_t 		NX_DspVideoSetPosition		( DISPLAY_HANDLE hDisplay, DSP_IMG_RECT *pRect );
 
-//	Crop Input Source Image
-int32_t			NX_DspVideoSetSourceFormat ( DISPLAY_HANDLE hDisplay, int32_t width, int32_t height, int32_t stride, int32_t fourcc );
-int32_t			NX_DspVideoSetSourceCrop ( DISPLAY_HANDLE hDisplay, DSP_IMG_RECT *pRect );
+int32_t			NX_DspVideoSetPriority		( int32_t module, int32_t priority );
+int32_t			NX_DspVideoGetPriority		( int32_t module, int32_t *priority );
 
-//	Display Control
-int32_t			NX_DspVideoSetPriority( int32_t module, int32_t priority );
-int32_t			NX_DspSetColorKey( int32_t module, int32_t priority );
-
+int32_t			NX_DspSetColorKey			( int32_t module, int32_t colorkey );
+int32_t			NX_DspGetColorKey			( int32_t module, int32_t *colorkey );
 #ifdef __cplusplus
 }
 #endif

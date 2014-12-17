@@ -356,6 +356,7 @@ typedef struct
 	int userDataBufFull;
     int activeFormat;
 
+	int iRet;
 } VPU_DEC_DEC_FRAME_ARG;
 
 

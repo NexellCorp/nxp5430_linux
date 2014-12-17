@@ -148,10 +148,11 @@ class V4l2NexellPrivate {
     } SubdevUsageScheme;
 
 public:
-    V4l2NexellPrivate() : EntityCount(0) {
+    V4l2NexellPrivate() : EntityCount(0), MediaFD(0) {
     }
 
     virtual ~V4l2NexellPrivate() {
+        if( MediaFD ) close(MediaFD);
     }
 
     int init(const struct V4l2UsageScheme *);
@@ -1288,6 +1289,7 @@ int V4l2NexellPrivate::setCrop(int id, int l, int t, int w, int h, int pad)
         return -EINVAL;
     }
 
+    //printf("%s: id %d, pad %d, %d:%d-%d%d\n", __func__, id, pad, l, t, w, h);
 #if 1
     /* for M2M, set,getCrop involves output */
     if (!pInfo->isM2M())

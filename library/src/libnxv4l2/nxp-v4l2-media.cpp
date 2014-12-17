@@ -303,3 +303,10 @@ int v4l2_set_preset(V4L2_PRIVATE_HANDLE pHandle, int id, uint32_t preset)
 
     return ((V4l2NexellPrivate*)pHandle)->setPreset(id, preset);
 }
+
+int v4l2_get_device_fd(V4L2_PRIVATE_HANDLE pHandle, int id)
+{
+	assert(pHandle);
+
+	return ((V4l2NexellPrivate*)pHandle)->getDeviceFD(id);
+}

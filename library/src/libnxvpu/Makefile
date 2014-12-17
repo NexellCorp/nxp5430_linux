@@ -16,7 +16,7 @@ LIBRARY += -lnxvidrc
 ######################################################################
 # Target
 COBJS  	:= 
-COBJS  	+= nx_video_api.o
+COBJS  	+= parser_vld.o nx_video_api.o
 CPPOBJS	:=  
 
 CFLAGS	+= -g

@@ -216,11 +216,11 @@ NX_VID_MEMORY_HANDLE NX_VideoAllocateMemory( int align, int width, int height, i
 	handle->align 			= align;
 	handle->memoryMap		= memMap;
 	handle->fourCC			= fourCC;
-	handle->imgWidth			= width;
+	handle->imgWidth		= width;
 	handle->imgHeight		= height;
 	handle->luPhyAddr		= luHandle->phyAddr;
 	handle->luVirAddr		= luHandle->virAddr;
-	handle->luStride			= lWidth;
+	handle->luStride		= lWidth;
 	if( cbHandle )
 	{
 		handle->cbPhyAddr		= cbHandle->phyAddr;
@@ -241,28 +241,28 @@ NX_VID_MEMORY_HANDLE NX_VideoAllocateMemory( int align, int width, int height, i
 	handle->align 			= align;	//	Start Address Align
 	handle->memoryMap		= memMap;
 	handle->fourCC			= fourCC;
-	handle->imgWidth			= width;
+	handle->imgWidth		= width;
 	handle->imgHeight		= height;
 	handle->luPhyAddr		= luHandle->phyAddr;
 	handle->luVirAddr		= luHandle->virAddr;
-	handle->luStride			= lWidth;
+	handle->luStride		= lWidth;
 
 	handle->cbPhyAddr		= luHandle->phyAddr + lSize;
 	handle->cbVirAddr		= luHandle->virAddr + lSize;
-	handle->cbStride			= cWidth;
+	handle->cbStride		= cWidth;
 
 	if( fourCC == FOURCC_NV12 || fourCC == FOURCC_NV21 )
 	{
 		//	Write cb Address & Value
 		handle->crPhyAddr		= handle->cbPhyAddr;
 		handle->crVirAddr		= handle->cbVirAddr;
-		handle->crStride			= cWidth;
+		handle->crStride		= cWidth;
 	}
 	else
 	{
 		handle->crPhyAddr		= handle->cbPhyAddr + cSize;
 		handle->crVirAddr		= handle->cbVirAddr + cSize;
-		handle->crStride			= cWidth;
+		handle->crStride		= cWidth;
 	}
 #endif
 	return handle;
@@ -342,17 +342,17 @@ NX_VID_MEMORY_HANDLE NX_VideoAllocateMemory2( int align, int width, int height, 
 	handle->align 			= align;
 	handle->memoryMap		= memMap;
 	handle->fourCC			= fourCC;
-	handle->imgWidth			= width;
+	handle->imgWidth		= width;
 	handle->imgHeight		= height;
 	handle->luPhyAddr		= luHandle->phyAddr;
 	handle->luVirAddr		= luHandle->virAddr;
-	handle->luStride			= lWidth;
+	handle->luStride		= lWidth;
 	handle->cbPhyAddr		= cbHandle->phyAddr;
 	handle->cbVirAddr		= cbHandle->virAddr;
-	handle->cbStride			= cWidth;
+	handle->cbStride		= cWidth;
 	handle->crPhyAddr		= crHandle->phyAddr;
 	handle->crVirAddr		= crHandle->virAddr;
-	handle->crStride			= cWidth;
+	handle->crStride		= cWidth;
 
 	return handle;
 

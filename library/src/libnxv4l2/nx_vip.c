@@ -33,140 +33,155 @@
 
 #include "nx_vip.h"
 
-#define V4L2_CID_CAMERA_MODE_CHANGE     (V4L2_CTRL_CLASS_CAMERA | 0x1003)
-
+#define	VIP_MAX_BUF_SIZE				32		//	currently set minimum size for encoding & display
 
 typedef struct VIP_HANDLE_INFO	VIP_HANDLE_INFO;
 
 struct VIP_HANDLE_INFO {
 	V4L2_PRIVATE_HANDLE	hPrivate;		//  private handle
-	
-	//	Setting Values
 	VIP_INFO			vipInfo;		//	Input Information
 	int32_t				mode;			//	same as Video Input Type' mode
-	int32_t				cliperId;		//	
-	int32_t				sensorId;		//	
-	int32_t				decimatorId;	//	
+	
+	int32_t				sensorId;		//	sensor id
+	int32_t				cliperId;		//	clipper id
+	int32_t				decimatorId;	//	decimator id
 
 	int32_t				numPlane;		//	Input Image's Plane Number
 
-	//	Buffer Control Informatons
-	NX_VID_MEMORY_INFO *pMgmtMem[VIP_MAX_BUF_SIZE];
-	int32_t				curQueuedSize;
+	NX_VID_MEMORY_INFO *pMgmtMem1[VIP_MAX_BUF_SIZE];	// video memory slot1
+	NX_VID_MEMORY_INFO *pMgmtMem2[VIP_MAX_BUF_SIZE];	// video memory slot2
 
-	bool				streamOnFlag;	//	on/off flag
+	int32_t				curQueuedSize;	//	Number of video memory
+
+	int32_t				streamOnFlag;	//	on/off flag
 	pthread_mutex_t		hMutex;
 };
 
 //#define DISPLAY_FPS
 
 #ifdef DISPLAY_FPS
-unsigned long long int GetSystemTime(void)
+uint64_t GetSystemTime( void )
 {
 	struct timeval tv;
 	gettimeofday( &tv, NULL );
-	return ((unsigned long long int)tv.tv_sec)*1000 + tv.tv_usec / 1000;
+	return ((uint64_t)tv.tv_sec)*1000 + tv.tv_usec / 1000;
 }
 #endif
 
+// CLIP_STATUS(a) :: clipper only / clipper with memory + decimator with memory
+// DECI_STATUS(a) :: decimator only / clipper + decimator with memory / clipper with memory + decimator with memory
+#define CLIP_STATUS(a) 	((a == VIP_MODE_CLIPPER) || (a == VIP_MODE_CLIP_DEC2)) ? true : false
+#define DECI_STATUS(a) 	((a == VIP_MODE_DECIMATOR) || (a == VIP_MODE_CLIP_DEC) || (a == VIP_MODE_CLIP_DEC2)) ? true : false
+
+#define	ALIGN(X,N)		((X+N-1) & (~(N-1)))
+
 VIP_HANDLE NX_VipInit( VIP_INFO *pVipInfo )
 {
-	VIP_HANDLE hVip = NULL;
 	V4L2_PRIVATE_HANDLE hPrivate = NULL;
+	VIP_HANDLE hVip = NULL;
 
-	int32_t cliperId, sensorId, mipiId;
-	int32_t width, height, format;
-	int32_t cropX, cropY, cropWidth, cropHeight;
+	int32_t cliperId, decimatorId, sensorId;
+	int32_t format;
 
 	struct V4l2UsageScheme s;
-	memset(&s, 0, sizeof(s));
+	memset( &s, 0x00, sizeof(s) );
+	
+	// 1. Check vip port and Set using memory.
+	if( pVipInfo->port == VIP_PORT_0 ) {
+		s.useClipper0 	= CLIP_STATUS( pVipInfo->mode );
+		s.useDecimator0 = DECI_STATUS( pVipInfo->mode );
 
-	// Configuration
-	if( pVipInfo->port == VIP_PORT_0 )
-	{
-		s.useClipper0 = true;
-		s.useDecimator0 = true;
-
-		cliperId = nxp_v4l2_clipper0;
-		sensorId = nxp_v4l2_sensor0;
+		sensorId 	= nxp_v4l2_sensor0;
+		cliperId 	= nxp_v4l2_clipper0;
+		decimatorId	= nxp_v4l2_decimator0;
 	}
-	else if( pVipInfo->port == VIP_PORT_1 )
-	{
-		s.useClipper1 = true;
-		s.useDecimator1 = true;
+	else if( pVipInfo->port == VIP_PORT_1 ) {
+		s.useClipper1 	= CLIP_STATUS( pVipInfo->mode );
+		s.useDecimator1 = DECI_STATUS( pVipInfo->mode );
 
-		cliperId = nxp_v4l2_clipper1;
-		sensorId = nxp_v4l2_sensor1;
+		sensorId 	= nxp_v4l2_sensor1;
+		cliperId 	= nxp_v4l2_clipper1;
+		decimatorId	= nxp_v4l2_decimator1;
 	}
-	else if( pVipInfo->port == VIP_PORT_MIPI )
-	{
-		s.useClipper1 = true;
-		s.useDecimator1 = true;
+	else if( pVipInfo->port == VIP_PORT_2 ) {
+		s.useClipper1	= CLIP_STATUS( pVipInfo->mode );
+		s.useDecimator1	= DECI_STATUS( pVipInfo->mode );
 
-		cliperId = nxp_v4l2_clipper1;
-		sensorId = nxp_v4l2_sensor1;
-		mipiId	 = nxp_v4l2_mipicsi;
+		sensorId	= nxp_v4l2_sensor0;
+		cliperId	= nxp_v4l2_clipper0;
+		decimatorId	= nxp_v4l2_decimator0;
 	}
-	else
-	{
-		printf("Invalid port number = %d\n", pVipInfo->port );
-		return NULL;
+	else if( pVipInfo->port == VIP_PORT_MIPI ) {
+		s.useClipper1	= CLIP_STATUS( pVipInfo->mode );
+		s.useDecimator1 = DECI_STATUS( pVipInfo->mode );
+
+		sensorId	= nxp_v4l2_sensor1;
+		cliperId	= nxp_v4l2_clipper1;
+		decimatorId	= nxp_v4l2_decimator1;
 	}
-
-
-	if( !(hPrivate = v4l2_init(&s)) )
-	{
-		printf("Error : v4l2_init() failed!!!\n");
-		return NULL;
-	}
-
-	//v4l2_set_format(hPrivate, nxp_v4l2_clipper1, width, height, V4L2_PIX_FMT_YUV420M);
-	//v4l2_set_crop(hPrivate, nxp_v4l2_clipper1, 0, 0, width, height);
-	//v4l2_set_format(hPrivate, nxp_v4l2_sensor1, width, height, V4L2_MBUS_FMT_YUYV8_2X8);
-	//v4l2_set_format(hPrivate, nxp_v4l2_mipicsi, width, height, V4L2_MBUS_FMT_YUYV8_2X8);
-	//v4l2_reqbuf(hPrivate, nxp_v4l2_clipper1, VIP_MAX_BUF_SIZE);
-
-	width = pVipInfo->width;
-	height = pVipInfo->height;
-
-	if( pVipInfo->port != VIP_PORT_MIPI )
-		v4l2_set_format(hPrivate, sensorId, width, height, PIXCODE_YUV420_PLANAR);
 	else {
-		v4l2_set_format(hPrivate, nxp_v4l2_sensor1, width, height, V4L2_MBUS_FMT_YUYV8_2X8);
-		v4l2_set_format(hPrivate, nxp_v4l2_mipicsi, width, height, V4L2_MBUS_FMT_YUYV8_2X8);
-	}
-
-	if (width > 1024 || height > 768)
-		v4l2_set_ctrl(hPrivate, sensorId, V4L2_CID_CAMERA_MODE_CHANGE, 1);
-	else
-		v4l2_set_ctrl(hPrivate, sensorId, V4L2_CID_CAMERA_MODE_CHANGE, 0);
-
-	if( pVipInfo->mode == VIP_MODE_CLIPPER ) {		// Cliper
-
-		if( pVipInfo->numPlane == 3 )
-			v4l2_set_format(hPrivate, cliperId, width, height, PIXFORMAT_YUV420_PLANAR);
-		else
-			v4l2_set_format(hPrivate, cliperId, width, height, PIXFORMAT_YUV420_YV12);
-		v4l2_set_crop(hPrivate, cliperId, pVipInfo->cropX, pVipInfo->cropY, pVipInfo->cropWidth, pVipInfo->cropHeight);
-		v4l2_reqbuf(hPrivate, cliperId, VIP_MAX_BUF_SIZE);
-	}
-	else {		// Decimator (Not support yet..)
-		printf("Decimator not implementation yet.\n");
 		return NULL;
 	}
 
-	hVip = (VIP_HANDLE)malloc(sizeof(VIP_HANDLE_INFO));
-	memset( hVip, 0, sizeof(VIP_HANDLE_INFO) );
-	memcpy( &hVip->vipInfo, pVipInfo, sizeof(hVip->vipInfo) );
+	// 2. Get private handle.
+	if( !(hPrivate = v4l2_init(&s)) ) {
+		printf("%s(): v4l2_init() failed!\n", __func__);
+		return NULL;
+	}
 
-	hVip->hPrivate	= hPrivate;
-	hVip->mode		= pVipInfo->mode;
-	hVip->numPlane  = pVipInfo->numPlane;
-	hVip->cliperId	= cliperId;
-	hVip->sensorId	= sensorId;
+	// 3. Set sensor format. (Normal case / MIPI case)
+	if( pVipInfo->port != VIP_PORT_MIPI ) {
+		v4l2_set_format( hPrivate, sensorId, pVipInfo->width, pVipInfo->height, PIXCODE_YUV422_PACKED );
+	}
+	else {
+		v4l2_set_format( hPrivate, sensorId, pVipInfo->width, pVipInfo->height, PIXCODE_YUV422_PACKED );
+		v4l2_set_format( hPrivate, nxp_v4l2_mipicsi, pVipInfo->width, pVipInfo->height, PIXCODE_YUV422_PACKED );
+	}
+
+	// 4. Memory Align -> width is 32-aligned
+	pVipInfo->cropWidth		= ALIGN( pVipInfo->cropWidth, 32 );
+	pVipInfo->outWidth		= ALIGN( pVipInfo->outWidth, 32 );
+
+	// 5. Config Clipper & Decimator
+	// 5-a. clipper only / clipper with memory + decimator with memory
+	if( CLIP_STATUS(pVipInfo->mode) ) {
+		if( pVipInfo->numPlane == 3 )
+			v4l2_set_format( hPrivate, cliperId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_PLANAR );
+		else 
+			v4l2_set_format( hPrivate, cliperId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_YV12 );
+
+		v4l2_set_crop_with_pad( hPrivate, cliperId, 0, pVipInfo->cropX, pVipInfo->cropY, pVipInfo->cropWidth, pVipInfo->cropHeight );
+		v4l2_reqbuf( hPrivate, cliperId, VIP_MAX_BUF_SIZE );
+	}
+
+	// 5-b. decimator only / clipper + decimator with memory / clipper with memory + decimator with memory
+	if( DECI_STATUS(pVipInfo->mode) ) {
+		if( pVipInfo->numPlane == 3 )
+			v4l2_set_format( hPrivate, decimatorId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_PLANAR );
+		else
+			v4l2_set_format( hPrivate, decimatorId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_YV12 );
+
+		if( pVipInfo->mode == VIP_MODE_CLIP_DEC ) {
+			v4l2_set_crop_with_pad( hPrivate, decimatorId, 2, pVipInfo->cropX, pVipInfo->cropY, pVipInfo->cropWidth, pVipInfo->cropHeight );
+		}
+		
+		v4l2_set_crop_with_pad( hPrivate, decimatorId, 0, 0, 0, pVipInfo->outWidth, pVipInfo->outHeight );
+		v4l2_reqbuf( hPrivate, decimatorId, VIP_MAX_BUF_SIZE );
+	}
+
+	// 6. Create Handle
+	hVip = (VIP_HANDLE)malloc( sizeof(VIP_HANDLE_INFO) );
+	memset( hVip, 0, sizeof(VIP_HANDLE_INFO) );
+
+	hVip->hPrivate		= hPrivate;
+	hVip->vipInfo		= *pVipInfo;
+	hVip->mode			= pVipInfo->mode;
+	hVip->numPlane  	= pVipInfo->numPlane;
+	hVip->sensorId		= sensorId;
+	hVip->cliperId		= cliperId;
+	hVip->decimatorId	= decimatorId;
 
 	pthread_mutex_init( &hVip->hMutex, NULL );
-
 	return hVip;
 }
 
@@ -174,49 +189,63 @@ void NX_VipClose( VIP_HANDLE hVip )
 {
 	if( hVip )
 	{
+		pthread_mutex_destroy( &hVip->hMutex );
 		if( hVip->streamOnFlag )
 		{
-			v4l2_streamoff( hVip->hPrivate, hVip->cliperId );
+			if( CLIP_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->cliperId );
+			if( DECI_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->decimatorId );
+
 			hVip->streamOnFlag = 0;
 		}
-		v4l2_exit(hVip->hPrivate);
-
-		if( hVip )
-			free( hVip );
+		
+		if( hVip->hPrivate ) v4l2_exit(hVip->hPrivate);
+		if( hVip ) free( hVip );
 	}
 }
 
-int32_t NX_VipStreamControl( VIP_HANDLE hVip, bool enable )
+int32_t NX_VipStreamControl( VIP_HANDLE hVip, int32_t bEnable )
 {
-	printf("[%s] Not Implemetation..\n", __func__);
+	printf("%s(): Not implemetation.\n", __func__);
 	return 0;
 	
 	if( hVip )
 	{
-		if( 1 == enable ) {
-			if( 0 == hVip->streamOnFlag ) {
-				hVip->streamOnFlag = 1;
-				v4l2_streamon( hVip->hPrivate, hVip->cliperId );
-			} else {
-				printf("Already Stream On..\n");
-			}
-		}  else {
-			if( 1 == hVip->streamOnFlag ) {
-				hVip->streamOnFlag = 0;
-				v4l2_streamoff( hVip->hPrivate, hVip->cliperId );
-			} else {
-				printf("Already Stream Off..\n");
+		if( bEnable )
+		{
+			if( !hVip->streamOnFlag )
+			{
+				hVip->streamOnFlag = true;
+				if( DECI_STATUS(hVip->vipInfo.mode) ) v4l2_streamon( hVip->hPrivate, hVip->decimatorId );
+				if( CLIP_STATUS(hVip->vipInfo.mode) ) v4l2_streamon( hVip->hPrivate, hVip->cliperId );
 			}
 		}
-	} else {
-		printf("hVip is NULL..\n");
+		else
+		{
+			if( hVip->streamOnFlag )
+			{
+				hVip->streamOnFlag = false;
+				if( DECI_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->decimatorId );
+				if( CLIP_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->cliperId );
+			}
+		}
+
+	} 
+	else
+	{
+		return -1;
 	}
+
+	return 0;
 }
 
-int32_t NX_VipQueueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pInfo )
+int32_t NX_VipQueueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pMem )
 {
-	NX_VID_MEMORY_INFO *pMemSlot;
 	int32_t slotIndex, i;
+
+	if( hVip->mode == VIP_MODE_CLIP_DEC2 ) {
+		printf("%s(): Not support api. (mode = %d)\n", __func__, hVip->mode);
+		return -1;
+	}
 
 	pthread_mutex_lock( &hVip->hMutex );
 	if( hVip->curQueuedSize >= VIP_MAX_BUF_SIZE ) {
@@ -226,67 +255,54 @@ int32_t NX_VipQueueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pInfo )
 
 	//	Find Empty Slot & index
 	for( i = 0; i < VIP_MAX_BUF_SIZE; i++ ) {
-		if( hVip->pMgmtMem[i] == NULL ) {
+		if( hVip->pMgmtMem1[i] == NULL ) {
 			slotIndex = i;
-			hVip->pMgmtMem[i] = pInfo;
+			hVip->pMgmtMem1[i] = pMem;
 			break;
 		}
 	}
 
 	if( i == VIP_MAX_BUF_SIZE ) {
-		printf("Have no empty slot\n");
+		printf("%s(): Have no empty slot.\n", __func__);
 		pthread_mutex_unlock( &hVip->hMutex );
 		return -1;
 	}
 	hVip->curQueuedSize ++;
 
 	pthread_mutex_unlock( &hVip->hMutex );
-
-	if( 1 == hVip->mode )		//	Clipper Only
 	{
 		struct nxp_vid_buffer vipBuffer;
-		if( hVip->numPlane == 1 )
-		{
-			NX_MEMORY_INFO *vidMem;
-			for( i = 0; i<hVip->numPlane ; i++ ) {
-				vidMem				= (NX_MEMORY_INFO *)pInfo->privateDesc[i];
-				vipBuffer.fds[i]	= (int)vidMem->privateDesc;
-				vipBuffer.virt[i]	= (char*)vidMem->virAddr;
-				vipBuffer.phys[i]	= vidMem->phyAddr;
-				vipBuffer.sizes[i]	= vidMem->size;
-			}
+		NX_MEMORY_INFO *vidMem;
+		for( i = 0; i<hVip->numPlane; i++ ) {
+			vidMem				= (NX_MEMORY_INFO *)pMem->privateDesc[i];
+			vipBuffer.fds[i]	= (int)vidMem->privateDesc;
+			vipBuffer.virt[i]	= (char*)vidMem->virAddr;
+			vipBuffer.phys[i]	= vidMem->phyAddr;
+			vipBuffer.sizes[i]	= vidMem->size;
 		}
-		else
-		{
-			NX_MEMORY_INFO *vidMem;
-			for( i = 0; i < 3; i++ ) {
-				vidMem				= (NX_MEMORY_INFO *)pInfo->privateDesc[i];
-				vipBuffer.fds[i]	= (int)vidMem->privateDesc;
-				vipBuffer.virt[i]	= (char*)vidMem->virAddr;
-				vipBuffer.phys[i]	= vidMem->phyAddr;
-				vipBuffer.sizes[i]	= vidMem->size;
-			}
-		}
-		v4l2_qbuf( hVip->hPrivate, hVip->cliperId , 3, slotIndex, &vipBuffer, -1, NULL);
-	}
-	else  {
-		//	Not Support Yet
+		if( DECI_STATUS(hVip->mode) ) v4l2_qbuf( hVip->hPrivate, hVip->decimatorId , hVip->numPlane, slotIndex, &vipBuffer, -1, NULL);
+		if( CLIP_STATUS(hVip->mode) ) v4l2_qbuf( hVip->hPrivate, hVip->cliperId , hVip->numPlane, slotIndex, &vipBuffer, -1, NULL);
 	}
 
 	if( !hVip->streamOnFlag )
 	{
 		hVip->streamOnFlag = 1;
-		v4l2_streamon( hVip->hPrivate, hVip->cliperId );
+		if( DECI_STATUS(hVip->mode) ) v4l2_streamon( hVip->hPrivate, hVip->decimatorId );
+		if( CLIP_STATUS(hVip->mode) ) v4l2_streamon( hVip->hPrivate, hVip->cliperId );
 	}
 
 	return 0;
 }
 
-
-int32_t NX_VipDequeueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppInfo, long long *timeStamp )
+int32_t NX_VipDequeueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppMem, int64_t *pTimeStamp )
 {
 	int32_t ret = 0;
 	int32_t caputreIdx;
+
+	if( hVip->mode == VIP_MODE_CLIP_DEC2 ) {
+		printf("%s(): Not support api. (mode = %d)\n", __func__, hVip->mode);
+		return -1;
+	}
 
 	pthread_mutex_lock( &hVip->hMutex );
 	if( hVip->curQueuedSize < 2 )
@@ -295,22 +311,22 @@ int32_t NX_VipDequeueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppInfo, long 
 		return -1;
 	}
 	pthread_mutex_unlock( &hVip->hMutex );
-	
-	if( 1 == hVip->mode )
-	{
-		v4l2_dqbuf(hVip->hPrivate, hVip->cliperId, 3, &caputreIdx, NULL);
-		v4l2_get_timestamp(hVip->hPrivate, hVip->cliperId, timeStamp);
-		*ppInfo = hVip->pMgmtMem[caputreIdx];
-		hVip->pMgmtMem[caputreIdx] = NULL;
-		if( *ppInfo == NULL )
-		{
-			printf("Error : buffering problem!!!!\n");
-			ret = -1;
-		}
+
+	if( CLIP_STATUS(hVip->mode) ) {
+		v4l2_dqbuf(hVip->hPrivate, hVip->cliperId, hVip->numPlane, &caputreIdx, NULL);
+		v4l2_get_timestamp(hVip->hPrivate, hVip->cliperId, pTimeStamp);
 	}
-	else
+	else if( DECI_STATUS(hVip->mode) ) {
+		v4l2_dqbuf(hVip->hPrivate, hVip->decimatorId, hVip->numPlane, &caputreIdx, NULL);
+		v4l2_get_timestamp(hVip->hPrivate, hVip->decimatorId, pTimeStamp);
+	}
+
+	*ppMem = hVip->pMgmtMem1[caputreIdx];
+	hVip->pMgmtMem1[caputreIdx] = NULL;
+	if( *ppMem == NULL )
 	{
-		//	Not Support Yet
+		printf("%s(): Buffering error!\n", __func__);
+		ret = -1;
 	}
 
 	pthread_mutex_lock( &hVip->hMutex );
@@ -335,6 +351,126 @@ int32_t NX_VipDequeueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppInfo, long 
 	return ret;
 }
 
+int32_t NX_VipQueueBuffer2( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pClipMem, NX_VID_MEMORY_INFO *pDeciMem )
+{
+	int32_t slotIndex1, slotIndex2, i;
+
+	if( hVip->mode != VIP_MODE_CLIP_DEC2 ) {
+		printf("%s(): Not support api. (mode = %d)\n", __func__, hVip->mode);
+		return -1;
+	}
+
+	pthread_mutex_lock( &hVip->hMutex );
+	if( hVip->curQueuedSize >= VIP_MAX_BUF_SIZE ) {
+		pthread_mutex_unlock( &hVip->hMutex );
+		return -1;
+	}
+
+	//	Find Empty Slot & index
+	for( i = 0; i < VIP_MAX_BUF_SIZE; i++ ) {
+		if( hVip->pMgmtMem1[i] == NULL ) {
+			slotIndex1 = i;
+			hVip->pMgmtMem1[i] = pClipMem;
+			break;
+		}
+	}
+	if( i == VIP_MAX_BUF_SIZE ) {
+		printf("%s(): Have no empty slot.\n", __func__);
+		pthread_mutex_unlock( &hVip->hMutex );
+		return -1;
+	}
+
+	for( i = 0; i < VIP_MAX_BUF_SIZE; i++ ) {
+		if( hVip->pMgmtMem2[i] == NULL ) {
+			slotIndex2 = i;
+			hVip->pMgmtMem2[i] = pDeciMem;
+			break;
+		}
+	}
+	if( i == VIP_MAX_BUF_SIZE ) {
+		printf("%s(): Have no empty slot.\n", __func__);
+		pthread_mutex_unlock( &hVip->hMutex );
+		return -1;
+	}
+
+	hVip->curQueuedSize ++;
+
+	pthread_mutex_unlock( &hVip->hMutex );
+	{
+		struct nxp_vid_buffer vipBuffer1, vipBuffer2;
+		NX_MEMORY_INFO *vidMem1, *vidMem2;
+
+		for( i = 0; i < hVip->numPlane; i++ ) {
+			vidMem1				= (NX_MEMORY_INFO *)pClipMem->privateDesc[i];
+			vipBuffer1.fds[i]	= (int)vidMem1->privateDesc;
+			vipBuffer1.virt[i]	= (char*)vidMem1->virAddr;
+			vipBuffer1.phys[i]	= vidMem1->phyAddr;
+			vipBuffer1.sizes[i]	= vidMem1->size;
+
+			vidMem2				= (NX_MEMORY_INFO *)pDeciMem->privateDesc[i];
+			vipBuffer2.fds[i]	= (int)vidMem2->privateDesc;
+			vipBuffer2.virt[i]	= (char*)vidMem2->virAddr;
+			vipBuffer2.phys[i]	= vidMem2->phyAddr;
+			vipBuffer2.sizes[i]	= vidMem2->size;
+		}
+		
+		v4l2_qbuf( hVip->hPrivate, hVip->cliperId, hVip->numPlane, slotIndex1, &vipBuffer1, -1, NULL);
+		v4l2_qbuf( hVip->hPrivate, hVip->decimatorId, hVip->numPlane, slotIndex2, &vipBuffer2, -1, NULL);
+	}
+
+	if( !hVip->streamOnFlag ) {
+		hVip->streamOnFlag = 1;
+		v4l2_streamon( hVip->hPrivate, hVip->decimatorId );
+		v4l2_streamon( hVip->hPrivate, hVip->cliperId );
+	}
+}
+
+int32_t NX_VipDequeueBuffer2( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppClipMem, NX_VID_MEMORY_INFO **ppDeciMem, int64_t *pClipTimeStamp, int64_t *pDeciTimeStamp )
+{
+	int32_t ret = 0;
+	int32_t captureIdx1, captureIdx2;
+
+	if( hVip->mode != VIP_MODE_CLIP_DEC2 ) {
+		printf("%s(): Not support api. (mode = %d)\n", __func__, hVip->mode);
+		return -1;
+	}
+
+	pthread_mutex_lock( &hVip->hMutex );
+	if( hVip->curQueuedSize < 2 )
+	{
+		pthread_mutex_unlock( &hVip->hMutex );
+		return -1;
+	}
+	pthread_mutex_unlock( &hVip->hMutex );
+
+	v4l2_dqbuf( hVip->hPrivate, hVip->cliperId, hVip->numPlane, &captureIdx1, NULL );
+	v4l2_dqbuf( hVip->hPrivate, hVip->decimatorId, hVip->numPlane, &captureIdx2, NULL );
+	
+	v4l2_get_timestamp( hVip->hPrivate, hVip->cliperId, pClipTimeStamp );
+	v4l2_get_timestamp( hVip->hPrivate, hVip->decimatorId, pDeciTimeStamp );
+
+	*ppClipMem = hVip->pMgmtMem1[captureIdx1];
+	*ppDeciMem = hVip->pMgmtMem2[captureIdx2];
+	
+	hVip->pMgmtMem1[captureIdx1] = NULL;
+	hVip->pMgmtMem2[captureIdx2] = NULL;
+
+	if( *ppClipMem == NULL ) {
+		printf("%s(): Cliiper memory buffering error!\n", __func__);
+		ret = -1;
+	}	
+
+	if( *ppDeciMem == NULL ) {
+		printf("%s(): Decimator memory buffering error!\n", __func__);
+		ret = -1;
+	}
+
+	pthread_mutex_lock( &hVip->hMutex );
+	hVip->curQueuedSize--;
+	pthread_mutex_unlock( &hVip->hMutex );
+
+	return ret;
+}
 
 int32_t NX_VipGetCurrentBufCount( VIP_HANDLE hVip, int32_t *maxSize )
 {

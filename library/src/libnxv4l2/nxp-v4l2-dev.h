@@ -257,7 +257,7 @@ public:
         return VideoDev->getFormat(w, h, format);
     }
     virtual int setCrop(int l, int t, int w, int h, int index = 0) {
-        return VideoDev->setCrop(l, t, w, h);
+        return VideoDev->setCrop(l, t, w, h, index);
     }
     virtual int getCrop(int *l, int *t, int *w, int *h, int index = 0) {
         return VideoDev->getCrop(l, t, w, h);

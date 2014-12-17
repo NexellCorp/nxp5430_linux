@@ -27,8 +27,8 @@ typedef enum {
 	NX_H263_DEC     = 0x04,         // H.263
 	NX_DIV3_DEC     = 0x05,         // Divx 3.11(MS Mpeg4 V3)
 	NX_RV_DEC       = 0x06,         // Real Video
-	NX_VPX_THEORA   = 0x07,         // Theora
-	NX_VPX_VP8      = 0x08,         // VP8
+	NX_THEORA_DEC   = 0x07,         // Theora
+	NX_VP8_DEC      = 0x08,         // VP8
 	NX_JPEG_DEC     = 0x09,         // JPEG
 
 	//  Encoders
@@ -39,7 +39,7 @@ typedef enum {
 } VID_TYPE_E;
 
 typedef enum{
-	VID_ERR_NOT_ALLOC_BUFF			= -28,
+	VID_ERR_NOT_ALLOC_BUFF          = -28,
 	VID_ERR_NOT_ENOUGH_STREAM       = -27,
 	VID_ERR_NO_DEC_FRAME            = -26,
 	VID_ERR_NEED_MORE_BUF           = -25,
@@ -49,7 +49,8 @@ typedef enum{
 	VID_ERR_BUSY                    = -21,  // VPU H/W Busy
 	VID_ERR_TIMEOUT                 = -20,  // VPU Wait Timeout
 	VID_ERR_MEM_ACCESS              = -19,  // Memory Access Violation
-	VID_ERR_CHG_PARAM				= -6,	// VPU Not changed
+	VID_ERR_NOT_SUPPORT             = -7,
+	VID_ERR_CHG_PARAM               = -6,   // VPU Not changed
 	VID_ERR_WRONG_SEQ               = -5,   // Wrong Sequence
 	VID_ERR_PARAM                   = -4,   // VPU Invalid Parameter
 	VID_ERR_RUN                     = -3,
@@ -70,6 +71,7 @@ enum{
 	PIC_TYPE_VC1_P_SKIP             = 4,
 	PIC_TYPE_MP4_P_SKIP_NOT_CODED   = 4,    // Not Coded P Picture at mpeg4 packed mode
 	PIC_TYPE_SKIP                   = 5,
+	PIC_TYPE_IDR                    = 6,
 	PIC_TYPE_UNKNOWN                = 0xff,
 };
 
@@ -78,13 +80,13 @@ enum {
 };
 
 typedef enum {
-	VID_CHG_GOP                     = 1,			// GOP
-	VID_CHG_BITRATE                 = (1 << 2),    	// Bit Rate
-	VID_CHG_FRAMERATE               = (1 << 3),    	// Frame Rate
-	VID_CHG_INTRARF                 = (1 << 4),   	// Intra Refresh
+	VID_CHG_GOP                     = 1,            // GOP
+	VID_CHG_BITRATE                 = (1 << 2),     // Bit Rate
+	VID_CHG_FRAMERATE               = (1 << 3),     // Frame Rate
+	VID_CHG_INTRARF                 = (1 << 4),     // Intra Refresh
 	VID_CHG_MAX_QP                  = (1 << 7),     // Maximum quantization parameter
-	VID_CHG_DISABLE_SKIP            = (1 << 8),		// Disable skip frame mode
-	VID_CHG_VBV                     = (1 << 9),		// Reference decoder buffer size in byte
+	VID_CHG_DISABLE_SKIP            = (1 << 8),     // Disable skip frame mode
+	VID_CHG_VBV                     = (1 << 9),     // Reference decoder buffer size in byte
 } VID_ENC_CHG_PARAM_E;
 
 
@@ -105,7 +107,7 @@ typedef struct tNX_VID_ENC_OUT{
 	int32_t frameType;                      // Frame type
 	int32_t width;                          // Encoded image width
 	int32_t height;                         // Encoded image height
-	NX_VID_MEMORY_INFO ReconImg;			// Reconstructed image's pointer
+	NX_VID_MEMORY_INFO ReconImg;            // Reconstructed image's pointer
 }NX_VID_ENC_OUT;
 
 typedef struct tNX_VID_ENC_JPEG_PARAM{
@@ -117,32 +119,32 @@ typedef struct tNX_VID_ENC_JPEG_PARAM{
 }NX_VID_ENC_JPEG_PARAM;
 
 typedef struct tNX_VID_ENC_INIT_PARAM{
-	int32_t width;							// Width of image
-	int32_t height;							// Height of image
+	int32_t width;                          // Width of image
+	int32_t height;                         // Height of image
 	int32_t gopSize;                        // Size of key frame interval
-	int32_t fpsNum;							// Frame per second
+	int32_t fpsNum;                         // Frame per second
 	int32_t fpsDen;
 
 	// Rate Control Parameters (They are valid only when enableRC is TRUE[CBR])
 	int32_t enableRC;                       // En/Disable rate control, 0(Variable Bit Rate mode) or 1(Constant Bit Rate mode)
-	int32_t RCAlgorithm;					// 0 : Chips & Media Rate Control Algorithm, 1 : Nexell Rate Control Algorithm
+	int32_t RCAlgorithm;                    // 0 : Chips & Media Rate Control Algorithm, 1 : Nexell Rate Control Algorithm
 	uint32_t bitrate;                       // Target bitrate in bits per second
 	int32_t maximumQp;                      // Maximum quantization parameter
 	int32_t disableSkip;                    // Disable skip frame mode
 	int32_t RCDelay;                        // Valid value is 0 ~ 0x7FFF
-											// 0 does not check reference decoder buffer delay constraint.
+	                                        // 0 does not check reference decoder buffer delay constraint.
 	uint32_t rcVbvSize;                     // Reference decoder buffer size in byte
-											// Default value is 2sec if RCAlgorithm is 1.
-											// This valid is ignored if RCAlgorithm is 0 & RCDelay is 0.
+	                                        // Default value is 2sec if RCAlgorithm is 1.
+	                                        // This valid is ignored if RCAlgorithm is 0 & RCDelay is 0.
 	int32_t gammaFactor;                    // User gamma factor
-											// It is valid only when RCAlgorithm is 0.
+	                                        // It is valid only when RCAlgorithm is 0.
 	int32_t RcMode;
 
 	int32_t initialQp;                     	// Initial quantization parameter
-											// It is computed if enableRC is 1 & RCAlgorithm is 1 and the value is 0.
+	                                        // It is computed if enableRC is 1 & RCAlgorithm is 1 and the value is 0.
 
 	int32_t numIntraRefreshMbs;             // Intra MB refresh number.(Cyclic Intra Refresh)
-	int32_t	searchRange;					// search range of motion estimaiton (0 : 128 x 64, 1 : 64 x 32, 2 : 32 x 16, 3 : 16 x 16)
+	int32_t searchRange;                    // search range of motion estimaiton (0 : 128 x 64, 1 : 64 x 32, 2 : 32 x 16, 3 : 16 x 16)
 
 	//  Input Buffer Format
 	int32_t chromaInterleave;               // 0 : disable, 1 : enable
@@ -161,13 +163,13 @@ typedef struct tNX_VID_ENC_CHG_PARAM{
     int32_t chgFlg;
 	int32_t gopSize;                        // Size of key frame interval
 	int32_t bitrate;                        // Target bitrate in bits/second
-	int32_t fpsNum;							// Frame per second
+	int32_t fpsNum;                         // Frame per second
 	int32_t fpsDen;
 	int32_t maximumQp;                      // Maximum quantization parameter
 	int32_t disableSkip;                    // Disable skip frame mode
 	uint32_t rcVbvSize;                     // Reference decoder buffer size in byte.
-											// The value shall be set when bitrate is changed in Nexell RC Algorithm.
-											// Default value is 2sec if RCAlgorithm is 1. (The value is ignored when RCAlgorithm is 0 or enableRC is 0)
+	                                        // The value shall be set when bitrate is changed in Nexell RC Algorithm.
+	                                        // Default value is 2sec if RCAlgorithm is 1. (The value is ignored when RCAlgorithm is 0 or enableRC is 0)
 
 	int32_t numIntraRefreshMbs;             // Intra MB refresh number.(Cyclic Intra Refresh)
 }NX_VID_ENC_CHG_PARAM;
@@ -218,8 +220,8 @@ typedef struct tNX_VID_SEQ_IN{
 	NX_VID_MEMORY_HANDLE *pMemHandle;
 	int32_t numBuffers;
 
-	int32_t addNumBuffers;			        // Add to minimum frame buffer number (total frame buffer number = minimum number + addNumBuffers)
-						                    // This value is valid when External Buffer is not used.
+	int32_t addNumBuffers;                  // Add to minimum frame buffer number (total frame buffer number = minimum number + addNumBuffers)
+	                                        // This value is valid when External Buffer is not used.
 	int32_t disableOutReorder;              // 1 : Decoding Order, 0 : Display Order
 
 	// for MPEG2, MPEG4, Divx3.11 Decoder
@@ -252,6 +254,12 @@ typedef struct tNX_VID_SEQ_OUT{
 	int32_t unsupportedFeature;             // Flag to inform the feature is unsupported in NX Codec
 }NX_VID_SEQ_OUT;
 
+typedef struct tNX_VID_VERSION{
+    int32_t iMajor;
+    int32_t iMinor;
+    int32_t iPatch;
+	int32_t iReserved;
+} NX_VID_VERSION;
 
 
 
@@ -274,11 +282,12 @@ VID_ERROR_E NX_VidEncChangeParameter( NX_VID_ENC_HANDLE hEnc, NX_VID_ENC_CHG_PAR
 //
 NX_VID_DEC_HANDLE NX_VidDecOpen( VID_TYPE_E eCodecType, uint32_t uMp4Class, int32_t iOptions, int32_t *piInstanceIdx  );
 VID_ERROR_E NX_VidDecClose( NX_VID_DEC_HANDLE hDec );
-VID_ERROR_E NX_VidDecParseVideoCfg(NX_VID_SEQ_IN *pstSeqIn, NX_VID_SEQ_OUT *pstSeqOut);
-VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VID_SEQ_OUT *pstSeqOut);
+VID_ERROR_E NX_VidDecParseVideoCfg(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VID_SEQ_OUT *pstSeqOut);
+VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn);
 VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecIn, NX_VID_DEC_OUT *pstDecOut );
 VID_ERROR_E NX_VidDecClrDspFlag( NX_VID_DEC_HANDLE hDec, NX_VID_MEMORY_HANDLE hFrameBuf, int32_t iFrameIdx );
 VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec );
+VID_ERROR_E NX_VidDecGetFrameType( VID_TYPE_E eCodecType, NX_VID_DEC_IN *pstDecIn, int32_t *piFrameType );
 
 //
 //  Jpeg Encoder APIs
@@ -286,6 +295,8 @@ VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec );
 //
 VID_ERROR_E NX_VidEncJpegGetHeader( NX_VID_ENC_HANDLE hEnc, uint8_t *pbyJpgHeader, int32_t *piHeaderSize );
 VID_ERROR_E NX_VidEncJpegRunFrame( NX_VID_ENC_HANDLE hEnc, NX_VID_MEMORY_HANDLE hInImage, NX_VID_ENC_OUT *pstEncOut );
+
+VID_ERROR_E NX_VidGetVersion( NX_VID_VERSION *pstVersion );
 
 #ifdef __cplusplus
 }

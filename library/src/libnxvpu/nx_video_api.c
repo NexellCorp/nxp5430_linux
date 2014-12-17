@@ -16,7 +16,13 @@
 #include <nx_fourcc.h>
 #include <vpu_drv_ioctl.h>		//	Device Driver IOCTL
 #include <nx_alloc_mem.h>		//	Memory Allocation Information
+#include "parser_vld.h"
 
+
+// 14.12.05 initial version = 0.9.0
+#define NX_VID_VER_MAJOR		0
+#define NX_VID_VER_MINOR		9
+#define NX_VID_VER_PATCH		0
 
 #define	WORK_BUF_SIZE		(  80*1024)
 #define	STREAM_BUF_SIZE		(1024*1024*4)
@@ -730,10 +736,10 @@ NX_VID_DEC_HANDLE NX_VidDecOpen( VID_TYPE_E eCodecType, uint32_t uMp4Class, int3
 		case NX_VC1_DEC:	//	WMV
 			openArg.codecStd = CODEC_STD_VC1;
 			break;
-		case NX_VPX_THEORA:	//	Theora
+		case NX_THEORA_DEC:	//	Theora
 			openArg.codecStd = CODEC_STD_THO;
 			break;
-		case NX_VPX_VP8:	//	VP8
+		case NX_VP8_DEC:	//	VP8
 			openArg.codecStd = CODEC_STD_VP8;
 			break;
 		default:
@@ -817,20 +823,13 @@ VID_ERROR_E NX_VidDecClose( NX_VID_DEC_HANDLE hDec )
 	return 0;
 }
 
-VID_ERROR_E NX_VidDecParseVideoCfg(NX_VID_SEQ_IN *pstSeqIn, NX_VID_SEQ_OUT *pstSeqOut)
+VID_ERROR_E NX_VidDecParseVideoCfg(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VID_SEQ_OUT *pstSeqOut)
 {
-	return 0;
-}
-
-VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VID_SEQ_OUT *pstSeqOut)
-{
-	int32_t i, ret=-1;
+	int32_t i, ret = -1;
 	VPU_DEC_SEQ_INIT_ARG seqArg;
-	VPU_DEC_REG_FRAME_ARG frameArg;
 
 	FUNC_IN();
 	memset( &seqArg, 0, sizeof(seqArg) );
-	memset( &frameArg, 0, sizeof(frameArg) );
 
 	if( !hDec )
 	{
@@ -842,11 +841,29 @@ VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VI
 		NX_ErrMsg( ("Invalid encoder handle or driver handle!!!\n") );
 		goto ERROR_EXIT;
 	}
+
 	//	Initialize Encoder
 	if( hDec->isInitialized  )
 	{
-		NX_ErrMsg( ("Already initialized\n") );
-		goto ERROR_EXIT;
+		int32_t i = 0;
+		int32_t iSeqSize = ( pstSeqIn->seqSize < 2048 ) ? ( pstSeqIn->seqSize ) : ( 2048 );
+
+		if ( iSeqSize == hDec->seqDataSize )
+		{
+			uint8_t *pbySrc = hDec->pSeqData;
+			uint8_t *pbyDst = pstSeqIn->seqInfo;
+			for (i=0 ; i<iSeqSize ; i++)
+			{
+				if ( *pbySrc++ != *pbyDst++ )	break;
+			}
+		}
+
+		if ( (iSeqSize == 0) || (i == iSeqSize) )
+		{
+			NX_ErrMsg( ("Already initialized\n") );
+			goto ERROR_EXIT;
+		}
+		hDec->isInitialized = 0;
 	}
 
 	seqArg.seqData        	= pstSeqIn->seqInfo;
@@ -861,8 +878,7 @@ VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VI
 	}
 
 	seqArg.enablePostFilter = pstSeqIn->enablePostFilter;
-	seqArg.enableUserData   = pstSeqIn->enableUserData && (hDec->codecStd == CODEC_STD_MPEG2);
-
+	seqArg.enableUserData   = (pstSeqIn->enableUserData) && (hDec->codecStd == CODEC_STD_MPEG2);
 	if( seqArg.enableUserData )
 	{
 		NX_DbgMsg(DBG_USER_DATA, ("Enabled user data\n"));
@@ -890,20 +906,85 @@ VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VI
 		goto ERROR_EXIT;
 	}
 
+	hDec->seqDataSize = ( pstSeqIn->seqSize < 2048 ) ? ( pstSeqIn->seqSize ) : ( 2048 );
+	memcpy (hDec->pSeqData, pstSeqIn->seqInfo, hDec->seqDataSize);
+
+	hDec->width = seqArg.cropRight;
+	hDec->height = seqArg.cropBottom;
+	hDec->numFrameBuffers = seqArg.minFrameBufCnt;
+
+	pstSeqOut->minBuffers 		= seqArg.minFrameBufCnt;
+	pstSeqOut->numBuffers 		= seqArg.minFrameBufCnt + pstSeqIn->addNumBuffers;
+	pstSeqOut->width        	= seqArg.cropRight;
+	pstSeqOut->height       	= seqArg.cropBottom;
+	pstSeqOut->frameBufDelay	= seqArg.frameBufDelay;
+	pstSeqOut->isInterlace 		= seqArg.interlace;
+	pstSeqOut->frameRateNum 	= seqArg.frameRateNum;
+	pstSeqOut->frameRateDen 	= seqArg.frameRateDen;
+
+	if (seqArg.vp8HScaleFactor == 0)		pstSeqOut->vp8ScaleWidth  = 0;
+	else if (seqArg.vp8HScaleFactor == 1) 	pstSeqOut->vp8ScaleWidth  = seqArg.vp8ScaleWidth * 5 / 4;
+	else if (seqArg.vp8HScaleFactor == 2) 	pstSeqOut->vp8ScaleWidth  = seqArg.vp8ScaleWidth * 5 / 3;
+	else if (seqArg.vp8HScaleFactor == 3) 	pstSeqOut->vp8ScaleWidth  = seqArg.vp8ScaleWidth * 2;
+
+	if (seqArg.vp8VScaleFactor == 0)		pstSeqOut->vp8ScaleHeight  = 0;
+	else if (seqArg.vp8VScaleFactor == 1) 	pstSeqOut->vp8ScaleHeight  = seqArg.vp8ScaleHeight * 5 / 4;
+	else if (seqArg.vp8VScaleFactor == 2) 	pstSeqOut->vp8ScaleHeight  = seqArg.vp8ScaleHeight * 5 / 3;
+	else if (seqArg.vp8VScaleFactor == 3) 	pstSeqOut->vp8ScaleHeight  = seqArg.vp8ScaleHeight * 2;
+
+	// TBD.
+	pstSeqOut->userDataNum = 0;
+	pstSeqOut->userDataSize = 0;
+	pstSeqOut->userDataBufFull = 0;
+	pstSeqOut->unsupportedFeature = 0;
+
+ERROR_EXIT:
+	FUNC_OUT();
+	return ret;
+}
+
+VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn)
+{
+	int32_t i, ret=-1;
+	VPU_DEC_REG_FRAME_ARG frameArg;
+
+	FUNC_IN();
+	memset( &frameArg, 0, sizeof(frameArg) );
+
+	if( !hDec )
+	{
+		NX_ErrMsg( ("Invalid encoder handle or driver handle!!!\n") );
+		goto ERROR_EXIT;
+	}
+	if( hDec->hDecDrv <= 0 )
+	{
+		NX_ErrMsg( ("Invalid encoder handle or driver handle!!!\n") );
+		goto ERROR_EXIT;
+	}
+	//	Initialize Encoder
+	if( hDec->isInitialized  )
+	{
+		NX_ErrMsg( ("Already initialized\n") );
+		goto ERROR_EXIT;
+	}
+
 	if( pstSeqIn->numBuffers > 0 )
 	{
 		hDec->useExternalFrameBuffer = 1;
+
+		if ( pstSeqIn->numBuffers - hDec->numFrameBuffers < 2 )
+		{
+			NX_DbgMsg( DBG_WARNING, ("[Warning] External Buffer too small.(min=%d, buffers=%d)\n", hDec->numFrameBuffers, pstSeqIn->numBuffers) );
+		}
+
 		hDec->numFrameBuffers = pstSeqIn->numBuffers;
 	}
 	else
 	{
-		hDec->numFrameBuffers = seqArg.minFrameBufCnt + pstSeqIn->addNumBuffers;
+		hDec->numFrameBuffers += pstSeqIn->addNumBuffers;
 	}
 
 	//	Allocation & Save Parameter in the decoder handle.
-	hDec->width  = seqArg.outWidth;
-	hDec->height = seqArg.outHeight;
-
 	if( 0 != AllocateDecoderMemory( hDec ) )
 	{
 		ret = VID_ERR_NOT_ALLOC_BUFF;
@@ -933,47 +1014,12 @@ VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn, NX_VI
 		goto ERROR_EXIT;
 	}
 
-	pstSeqOut->minBuffers   = seqArg.minFrameBufCnt;
-	pstSeqOut->numBuffers   = hDec->numFrameBuffers;
-	if( (pstSeqOut->numBuffers - pstSeqOut->minBuffers < 2) && hDec->useExternalFrameBuffer )
-	{
-		NX_DbgMsg( DBG_WARNING, ("[Warning] External Buffer too small.(min=%d, buffers=%d)\n", pstSeqOut->minBuffers, hDec->numFrameBuffers) );
-	}
-
-	pstSeqOut->width        = seqArg.cropRight;
-	pstSeqOut->height       = seqArg.cropBottom;
-	pstSeqOut->frameBufDelay= seqArg.frameBufDelay;
-	pstSeqOut->isInterlace 	= seqArg.interlace;
-
-	pstSeqOut->frameRateNum = seqArg.frameRateNum;	//	Frame Rate Numerator
-	pstSeqOut->frameRateDen = seqArg.frameRateDen;	//	Frame Rate Denominator
-	NX_DbgMsg(0, ("frameRateNum = %d, frameRateDen = %d\n", pstSeqOut->frameRateNum, pstSeqOut->frameRateDen));
-
-	if (seqArg.vp8HScaleFactor == 0)		pstSeqOut->vp8ScaleWidth  = 0;
-	else if (seqArg.vp8HScaleFactor == 1) 	pstSeqOut->vp8ScaleWidth  = seqArg.vp8ScaleWidth * 5 / 4;
-	else if (seqArg.vp8HScaleFactor == 2) 	pstSeqOut->vp8ScaleWidth  = seqArg.vp8ScaleWidth * 5 / 3;
-	else if (seqArg.vp8HScaleFactor == 3) 	pstSeqOut->vp8ScaleWidth  = seqArg.vp8ScaleWidth * 2;
-
-	if (seqArg.vp8VScaleFactor == 0)		pstSeqOut->vp8ScaleHeight  = 0;
-	else if (seqArg.vp8VScaleFactor == 1) 	pstSeqOut->vp8ScaleHeight  = seqArg.vp8ScaleHeight * 5 / 4;
-	else if (seqArg.vp8VScaleFactor == 2) 	pstSeqOut->vp8ScaleHeight  = seqArg.vp8ScaleHeight * 5 / 3;
-	else if (seqArg.vp8VScaleFactor == 3) 	pstSeqOut->vp8ScaleHeight  = seqArg.vp8ScaleHeight * 2;
-
-	// TBD.
-	pstSeqOut->userDataNum = 0;
-	pstSeqOut->userDataSize = 0;
-	pstSeqOut->userDataBufFull = 0;
-
-	pstSeqOut->unsupportedFeature = 0;
-
 	hDec->isInitialized = 1;
-	FUNC_OUT();
-	return ret;
 
 ERROR_EXIT:
+	FUNC_OUT();
 	return ret;
 }
-
 
 static void DecoderFlushTimeStamp( NX_VID_DEC_HANDLE hDec )
 {
@@ -1045,14 +1091,11 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 	pstDecOut->outImgIdx = -1;
 
 	ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_RUN_FRAME, &decArg );
-	if( ret < 0 )
+	if( ret != VID_ERR_NONE )
 	{
-		NX_ErrMsg( ("IOCTL_VPU_DEC_RUN_FRAME ioctl failed!!!\n") );
-		return -1;
+		NX_ErrMsg( ("IOCTL_VPU_DEC_RUN_FRAME ioctl failed!!!(%d) \n", decArg.iRet ) );
+		return (decArg.iRet);
 	}
-
-	if( ret > 0 )
-		return ret;
 
 	pstDecOut->outImgIdx = decArg.indexFrameDisplay;
 	pstDecOut->outDecIdx = decArg.indexFrameDecoded;
@@ -1066,8 +1109,8 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 	pstDecOut->isInterlace 	= decArg.isInterace;
 	pstDecOut->topFieldFirst= decArg.topFieldFirst;
 
-	if (decArg.numOfErrMBs == 0)
-		pstDecOut->outFrmReliable_0_100 = 100;
+	if ( decArg.numOfErrMBs == 0 )
+		pstDecOut->outFrmReliable_0_100 = (pstDecOut->outDecIdx < 0) ? (0) : (100);
 	else
 	{
 		int TotalMbNum = ((decArg.outWidth+15)>>4) * ((decArg.outHeight+15)>>4);
@@ -1133,7 +1176,7 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 
 	NX_RelMsg( 0, ("NX_VidDecDecodeFrame() Resol:%dx%d, picType=%d, imgIdx = %d\n", pstDecOut->width, pstDecOut->height, pstDecOut->picType, pstDecOut->outImgIdx) );
 	FUNC_OUT();
-	return 0;
+	return VID_ERR_NONE;
 }
 
 VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec )
@@ -1155,7 +1198,7 @@ VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec )
 	DecoderFlushTimeStamp( hDec );
 
 	FUNC_OUT();
-	return 0;
+	return VID_ERR_NONE;
 }
 
 VID_ERROR_E NX_VidDecClrDspFlag( NX_VID_DEC_HANDLE hDec, NX_VID_MEMORY_HANDLE hFrameBuf, int32_t iFrameIdx )
@@ -1186,7 +1229,80 @@ VID_ERROR_E NX_VidDecClrDspFlag( NX_VID_DEC_HANDLE hDec, NX_VID_MEMORY_HANDLE hF
 	}
 
 	FUNC_OUT();
-	return 0;
+	return VID_ERR_NONE;
+}
+
+// Optional Function
+VID_ERROR_E NX_VidDecGetFrameType( VID_TYPE_E eCodecType, NX_VID_DEC_IN *pstDecIn, int32_t *piFrameType )
+{
+	uint8_t *pbyStrm = pstDecIn->strmBuf;
+	uint32_t uPreFourByte = (uint32_t)-1;
+	int32_t  iFrmType = PIC_TYPE_UNKNOWN;
+
+	if ( (pbyStrm == NULL) || (piFrameType == NULL) )
+		return VID_ERR_PARAM;
+
+	if ( eCodecType == NX_AVC_DEC )
+	{
+		do
+		{
+			if ( pbyStrm >= (pstDecIn->strmBuf + pstDecIn->strmSize) )		return VID_ERR_NOT_ENOUGH_STREAM;
+			uPreFourByte = (uPreFourByte << 8) + *pbyStrm++;
+
+			if ( uPreFourByte == 0x00000001 || uPreFourByte<<8 == 0x00000100 )
+			{
+				int32_t iNaluType = pbyStrm[0] & 0x1F;
+
+				// Slice start code
+				if ( iNaluType == 5 )
+				{
+					//vld_get_uev(&stStrm);                 // First_mb_in_slice
+					iFrmType = PIC_TYPE_IDR;
+					break;
+				}
+				else if ( iNaluType == 1 )
+				{
+					VLD_STREAM stStrm = { 8, pbyStrm, pstDecIn->strmSize };
+					vld_get_uev(&stStrm);                   // First_mb_in_slice
+					iFrmType = vld_get_uev(&stStrm);        // Slice type
+
+					if ( iFrmType == 0 || iFrmType == 5 ) 		iFrmType = PIC_TYPE_P;
+					else if ( iFrmType == 1 || iFrmType == 6 ) iFrmType = PIC_TYPE_B;
+					else if ( iFrmType == 2 || iFrmType == 7 ) iFrmType = PIC_TYPE_I;
+					break;
+				}
+			}
+		} while(1);
+	}
+	else if ( eCodecType == NX_MP2_DEC )
+	{
+		do
+		{
+			if ( pbyStrm >= (pstDecIn->strmBuf + pstDecIn->strmSize) )		return VID_ERR_NOT_ENOUGH_STREAM;
+			uPreFourByte = (uPreFourByte << 8) + *pbyStrm++;
+
+			// Picture start code
+			if ( uPreFourByte == 0x00000100 )
+			{
+				VLD_STREAM stStrm = { 0, pbyStrm, pstDecIn->strmSize };
+
+				vld_flush_bits( &stStrm, 10 );				// tmoporal_reference
+				iFrmType = vld_get_bits( &stStrm, 3 );		// picture_coding_type
+
+				if ( iFrmType == 1 ) 		iFrmType = PIC_TYPE_I;
+				else if ( iFrmType == 2 ) 	iFrmType = PIC_TYPE_P;
+				else if ( iFrmType == 3 ) 	iFrmType = PIC_TYPE_B;
+				break;
+			}
+		} while(1);
+	}
+	else
+	{
+		return VID_ERR_NOT_SUPPORT;
+	}
+
+	*piFrameType = iFrmType;
+	return VID_ERR_NONE;
 }
 
 
@@ -1195,8 +1311,14 @@ VID_ERROR_E NX_VidDecClrDspFlag( NX_VID_DEC_HANDLE hDec, NX_VID_MEMORY_HANDLE hF
 //
 //////////////////////////////////////////////////////////////////////////////
 
-
-
+VID_ERROR_E NX_VidGetVersion( NX_VID_VERSION *pstVersion )
+{
+	pstVersion->iMajor = NX_VID_VER_MAJOR;
+	pstVersion->iMinor = NX_VID_VER_MINOR;
+	pstVersion->iPatch = NX_VID_VER_PATCH;
+	pstVersion->iReserved = NULL;
+	return VID_ERR_NONE;
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1377,7 +1499,6 @@ static int32_t AllocateDecoderMemory( NX_VID_DEC_HANDLE hDec )
 			}
 		}
 	}
-
 
 	hDec->hColMvBuffer = NX_AllocateMemory( mvSize*hDec->numFrameBuffers, 4096 );	//	Planar Lu/Cb/Cr
 	if( 0 == hDec->hColMvBuffer ){

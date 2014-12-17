@@ -27,20 +27,18 @@
 
 #include <nx_alloc_mem.h>
 
-#define	VIP_MAX_BUF_SIZE		32			//	currently set minimum size for encoding & display
-
-// VIP PORT
 enum {
 	VIP_PORT_0		= 0x00,
 	VIP_PORT_1		= 0x01,
-	VIP_PORT_MIPI	= 0x02,
+	VIP_PORT_2		= 0x02,
+	VIP_PORT_MIPI	= 0x03,
 };
 
-// VIP MODE
 enum {
-	VIP_MODE_CLIPPER   = 0x01,
-	VIP_MODE_DECIMATOR = 0x02,
-	VIP_MODE_CLIP_DEC  = 0x03,
+	VIP_MODE_CLIPPER   		= 0x00,
+	VIP_MODE_DECIMATOR 		= 0x01,
+	VIP_MODE_CLIP_DEC  		= 0x02,
+	VIP_MODE_CLIP_DEC2		= 0x03,
 };
 
 typedef struct VIP_INFO			VIP_INFO;
@@ -53,15 +51,15 @@ struct VIP_INFO {
 	int32_t		width;		//  Camera Input Width
 	int32_t		height;		//  Camera Input Height
 
-	int32_t		numPlane;	//	Input image's plane number
-
 	int32_t		fpsNum;		//	Frame per seconds's Numerate value
 	int32_t		fpsDen;		//	Frame per seconds's Denominate value
 
-	int32_t		cropX;		//  Cliper X
-	int32_t		cropY;		//  Cliper Y
-	int32_t		cropWidth;	//  Cliper Width
-	int32_t		cropHeight; //  cliper Height
+	int32_t		numPlane;	//	Input image's plane number
+
+	int32_t		cropX;		//  Cliper x
+	int32_t		cropY;		//  Cliper y
+	int32_t		cropWidth;	//  Cliper width
+	int32_t		cropHeight; //  Cliper height
 
 	int32_t		outWidth;	//  Decimator width
 	int32_t		outHeight;	//  Decimator height
@@ -73,10 +71,15 @@ extern "C"{
 
 VIP_HANDLE		NX_VipInit					( VIP_INFO *pVipInfo );
 void			NX_VipClose					( VIP_HANDLE hVip );
-int32_t			NX_VipStreamControl			( VIP_HANDLE hVip, bool enable );
+int32_t			NX_VipStreamControl			( VIP_HANDLE hVip, int32_t bEnable );
 
-int32_t			NX_VipQueueBuffer			( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pInfo );
-int32_t			NX_VipDequeueBuffer			( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppInfo, long long *timeStamp );
+// clipper, decimator, clipper + decimator with memory
+int32_t			NX_VipQueueBuffer			( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pMem );
+int32_t			NX_VipDequeueBuffer			( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppMem, int64_t *pTimeStamp );
+
+// clipper with memory + decimator with memory
+int32_t			NX_VipQueueBuffer2			( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pClipMem, NX_VID_MEMORY_INFO *pDeciMem );
+int32_t			NX_VipDequeueBuffer2		( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppClipMem, NX_VID_MEMORY_INFO **ppDeciMem, int64_t *pClipTimeStamp, int64_t *pDeciTimeStamp );
 
 int32_t			NX_VipGetCurrentQueuedCount	( VIP_HANDLE hVip, int32_t *maxSize );
 

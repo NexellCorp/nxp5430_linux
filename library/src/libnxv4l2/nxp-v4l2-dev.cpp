@@ -54,7 +54,7 @@ bool V4l2Device::init(char *name, int entityId,
 
 bool V4l2Device::activate()
 {
-    printf("%s: %s %d\n", __func__, Name, EntityID);
+    //printf("%s: %s %d\n", __func__, Name, EntityID);
     if (Name && FD < 0) {
         int fd = open(Name, O_RDWR);
         if (fd < 0) {
@@ -279,6 +279,7 @@ int V4l2Video::setCrop(int l, int t, int w, int h, int index)
     struct v4l2_crop crop;
     bzero(&crop, sizeof(crop));
     crop.type = static_cast<enum v4l2_buf_type>(BufType);
+    crop.pad = index;
     crop.c.left = l;
     crop.c.top = t;
     crop.c.width = w;

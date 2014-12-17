@@ -15,11 +15,11 @@
 #include <mach/platform.h>
 #include <linux/mutex.h>
 #include <mach/soc.h>
-#if defined (CONFIG_ARCH_NXP5430)
-#include <mach/nxp5430.h>
+#if defined (CONFIG_ARCH_NXP6818)
+#include <mach/s5p6818.h>
 #endif
-#if defined (CONFIG_ARCH_NXP4330)
-#include <mach/nxp4330.h>
+#if defined (CONFIG_ARCH_NXP4418)
+#include <mach/s5p6818.h>
 #endif
 #include <mach/devices.h>
 

@@ -23,9 +23,10 @@ LOCAL_C_INCLUDES := system/core/include/ion \
 					$(SLSIAP_INCLUDE) \
 					$(LINUX_INCLUDE)
 
-LOCAL_CFLAGS := 
+LOCAL_CFLAGS :=
 
 LOCAL_SRC_FILES := \
+	parser_vld.c \
 	nx_video_api.c
 
 LOCAL_LDFLAGS += \

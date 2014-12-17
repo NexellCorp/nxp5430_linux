@@ -20,12 +20,12 @@
 
 #include <mach/soc.h>
 
-#if defined (CONFIG_ARCH_NXP5430)
-#include <mach/nxp5430.h>
+#if defined (CONFIG_ARCH_S5P6818)
+#include <mach/s5p6818.h>
 #endif
 
-#if defined (CONFIG_ARCH_NXP4330)
-#include <mach/nxp4330.h>
+#if defined (CONFIG_ARCH_S5P4418)
+#include <mach/s5p4418.h>
 #endif
 
 #include <mach/devices.h>
@@ -129,7 +129,7 @@ static int nx_vpu_close( struct inode *inode, struct file *filp )
 #ifdef ENABLE_CLOCK_GATING
 		NX_VPU_Clock( 0 );
 #endif
-		NX_DbgMsg(1, ("End of power saving!!!\n"));
+		NX_DbgMsg(0, ("End of power saving!!!\n"));
 #ifdef CONFIG_NEXELL_DFS_BCLK
         bclk_put(BCLK_USER_MPEG);
 #endif

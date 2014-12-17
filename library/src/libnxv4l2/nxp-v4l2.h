@@ -96,6 +96,7 @@ int v4l2_unlink(int src_id, int dst_id);
 int v4l2_set_format(int id, int w, int h, int f);
 int v4l2_get_format(int id, int *w, int *h, int *f);
 int v4l2_set_crop(int id, int l, int t, int w, int h);
+int v4l2_set_crop_with_pad(int id, int pad, int l, int t, int w, int h);
 int v4l2_get_crop(int id, int *l, int *t, int *w, int *h);
 int v4l2_set_ctrl(int id, int ctrl_id, int value);
 int v4l2_get_ctrl(int id, int ctrl_id, int *value);
