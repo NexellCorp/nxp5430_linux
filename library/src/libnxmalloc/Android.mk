@@ -22,7 +22,7 @@ ANDROID_VERSION_STR := $(subst ., ,$(PLATFORM_VERSION))
 ANDROID_VERSION_MAJOR := $(firstword $(ANDROID_VERSION_STR))
 ifeq "5" "$(ANDROID_VERSION_MAJOR)"
 #@echo This is LOLLIPOP!!!
-LOCAL_C_INCLUDES += system/core/libion/include
+LOCAL_C_INCLUDES += system/core/libion/include/ion
 LOCAL_CFLAGS += -DLOLLIPOP
 endif
 
