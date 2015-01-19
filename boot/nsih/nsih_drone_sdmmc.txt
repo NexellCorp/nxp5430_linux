@@ -15,6 +15,8 @@
 //				Hans 2014.01.13 Excel Generator
 //				Hans 2013.06.23 Create
 //------------------------------------------------------------------------------
+// Excel sheet version - 0.2.0
+//------------------------------------------------------------------------------
 // This must be synchronized with SecondBoot.h
 //------------------------------------------------------------------------------
 // Nexell System Infomation Header
@@ -41,58 +43,58 @@ FFFF021C	// 0x03C : SRAMBASE + Header
 //------------------------------------------------------------------------------
 // Main Bootloader Load Info
 //------------------------------------------------------------------------------
-00008000	// 0x040 : Device Read Address 						
-00040000	// 0x044 : Load Size
-40100000	// 0x048 : Load Address
-40100000	// 0x04C : Launch Address
+00008000	// 0x040 : Device Read Address from 2ndboot Device.
+00040000	// 0x044 : Load Size for 2ndboot.
+FFFF0000	// 0x048 : Load Address for 2ndboot.
+FFFF0000	// 0x04C : Launch Address for 2ndboot.
 
-00000000	// 0x050	Boot From SDMMC					
-00000000	// 0x054
+00000000	// 0x050	[7:0] - Channel number
+03000000	// 0x054	Boot From SDMMC	[31:24] - 0: USB, 1: SPI, 2: NAND, 3:SDMMC, 4: SDFS
 00000000	// 0x058
+
 //------------------------------------------------------------------------------
 // CLKPWR registers
 //------------------------------------------------------------------------------
-10199001	// 0x05C : PLL0		800MHz
-10199001	// 0x060 : PLL1		800MHz
-50086601	// 0x064 : PLL2		614.4MHz
-100C9601	// 0x068 : PLL3		600MHz				
+100CC801	// 0x05C : PLL0		800MHz	P:3	M:200	S:1
+100D2C01	// 0x060 : PLL1		1200MHz	P:3	M:300	S:1
+50086601	// 0x064 : PLL2		614.4MHz	P:2	M:102	S:1	K:26214
+100CC801	// 0x068 : PLL3		800MHz	P:3	M:200	S:1	K:0
 
 66660104	// 0x06C : PLL2 SPREAD
 00000104	// 0x070 : PLL3 SPREAD
 
-00000601	// 0x074 : CPU		PLL1	/FCLK:800	/HCLK:200		
-0000020B	// 0x078 : BUS		PLL3	/BCLK:300	/PCLK:150
-00208000	// 0x07C : MEM		PLL0	/MDCLK:800	/MCLK:800	/MBCLK:400	/MPCLK:200
-00000209	// 0x080 : GR3D		PLL1	/GR3DBCLK:400
-00000209	// 0x084 : MPEG		PLL1	/MPEGBCLK:400	/MPEGPCLK:200
+00000601	// 0x074 : CPU G0	PLL1	/FCLK:1200	/HCLK:300
+0000020B	// 0x078 : BUS		PLL3	/BCLK:400	/PCLK:200
+00208003	// 0x07C : MEM		PLL3	/MDCLK:800	/MCLK:800	/MBCLK:400	/MPCLK:200
+00000208	// 0x080 : GR3D		PLL0	/GR3DBCLK:400
+0000020B	// 0x084 : MPEG		PLL3	/MPEGBCLK:400	/MPEGPCLK:200
+00000208	// 0x088 : DISP		PLL0	/DISPBCLK:400	/DISPPCLK:200
+0000003B	// 0x08C : HDMI		PLL3	/HDMIPCLK:100
+00000601	// 0x090 : CPU G1	PLL1	/FCLK:1200	/HCLK:300
+0000020B	// 0x094 : CCI4		PLL3	/CCI4BCLK:400	/CCI4PCLK:200
 
 //------------------------------------------------------------------------------
 // MCU-D registers
 //------------------------------------------------------------------------------
 // Mem Controller Configuration
-00000302	// 0x088	/Chip Num:2	/Chip Row:15	/Bus Width:16
-004007C0	// 0x08C	256x16x2CS	/CS1 Base Address:0x60000000
-1C0B0803	// 0x090	/CWL:8	/WL:8	/RL,CL:11
+03100301	// 0x098	/Chip Num:1	/Chip Row:15	/Bus Width:16	/Chip Col:10
+004007C0	// 0x09C	256x16x1CS
+06000B08	// 0x0A0	/CWL:8	/CL:11	/MR1_AL:0	/MR0_WR:6
 
 // DDR PHY delay timing Configuration
-0C0C0C0C	// 0x094
-02020202	// 0x098
+0C0C0C0C	// 0x0A4
+02020202	// 0x0A8
 
 // DDR AC Timing Configuration
-00620618	// 0x09C	/Refresh Interval:7.8us
-5024538D	// 0x0A0	/tRFC:80nCK	/tRRD:2nCK	/tRP:4nCK	/tRCD:5nCK	/tRC:14nCK	/tRAS:13nCK
-4440580B	// 0x0A4	/tWTR:2nCK	/tWR:4nCK	/tRTP:2nCK
-32000334	// 0x0A8	/tFAW:12nCK	/tXSR:512nCK	/tXP:3nCK	/tCKE:3nCK
+0000401B	// 0x0AC	/tPZQ:16411
+00620618	// 0x0B0	/Refresh Interval:7.8us
+6836650E	// 0x0B4	/tRFC:104	/tRRD:3	/tRP:6	/tRCD:6	/tRC:20	/tRAS:14
+3630580B	// 0x0B8	/tWTR:3	/tWR:6	/tRTP:3
+41000A26	// 0x0BC	/tFAW:16	/tXSR:256	/tXP:10	/tCKE:2
 
 //------------------------------------------------------------------------------
-// AXI Master Priority registers
+// STUB
 //------------------------------------------------------------------------------
-// Bottom Bus
-00000000	// 0x0AC
-00000000	// 0x0B0
-00000000	// 0x0B4
-00000000	// 0x0B8
-00000000	// 0x0BC
 00000000	// 0x0C0
 00000000	// 0x0C4
 00000000	// 0x0C8
@@ -120,8 +122,6 @@ FFFF021C	// 0x03C : SRAMBASE + Header
 00000000	// 0x120
 00000000	// 0x124
 00000000	// 0x128
-
-// Display Bus
 00000000	// 0x12C
 00000000	// 0x130
 00000000	// 0x134
@@ -154,10 +154,6 @@ FFFF021C	// 0x03C : SRAMBASE + Header
 00000000	// 0x1A0
 00000000	// 0x1A4
 00000000	// 0x1A8
-
-//------------------------------------------------------------------------------
-// STUB
-//------------------------------------------------------------------------------
 00000000	// 0x1AC
 00000000	// 0x1B0
 00000000	// 0x1B4
