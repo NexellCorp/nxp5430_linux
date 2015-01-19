@@ -1,13 +1,6 @@
-*.cmd
-*.symvers
+*test
+*backup
+*.so
 *.o
-.config
-.config.old
-.missing-syscalls.d
-.tmp*
-.version
-.depend
-System.map
+*.depend
 *.a
-*.d
-
