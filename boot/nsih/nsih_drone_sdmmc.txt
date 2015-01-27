@@ -83,7 +83,7 @@ FFFF0000	// 0x04C : Launch Address for 2ndboot.
 
 // DDR PHY delay timing Configuration
 0C0C0C0C	// 0x0A4
-02020202	// 0x0A8
+08080808	// 0x0A8
 
 // DDR AC Timing Configuration
 0000401B	// 0x0AC	/tPZQ:16411
