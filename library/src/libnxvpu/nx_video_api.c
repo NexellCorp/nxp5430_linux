@@ -704,6 +704,7 @@ NX_VID_DEC_HANDLE NX_VidDecOpen( VID_TYPE_E eCodecType, uint32_t uMp4Class, int3
 		NX_ErrMsg(("hBitStreamBuf allocation failed.\n"));
 		goto ERROR_EXIT;
 	}
+	memset(hDec->hBitStreamBuf->virAddr, 0, STREAM_BUF_SIZE );
 
 	//	Allocate Instance Memory & Stream Buffer
 	hDec->hInstanceBuf =  NX_AllocateMemory( workBufSize, 4096 );		//	x16 aligned
