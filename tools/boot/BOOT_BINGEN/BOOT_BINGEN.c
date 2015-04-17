@@ -71,13 +71,14 @@ int main(int argc, char **argv)
         return CTRUE;
     }
 
-	while( -1 !=(param_opt = getopt( argc, argv, "h:c:t:n:i:o:l:e:a:u:v:")))
+	while( -1 !=(param_opt = getopt( argc, argv, "hc:t:n:i:o:l:e:a:u:v:")))
 	{
       	switch(param_opt)
       	{
 	      	case 'h':
 	      		usage();
 	      		return CTRUE;
+	      		break;
 	      	case 'c':
 	      		cpu_name	= strdup(optarg);
 	      		to_upper(cpu_name);
@@ -155,6 +156,12 @@ int main(int argc, char **argv)
 	{
 		if( (0 == strcmp( cpu_name, "NXP4330" )) )
 		{
+		    if( InputSize > (NXP4330_SRAM_SIZE - NSIHSIZE) )
+            {
+                printf("Enter the binary size exceeded 16KB-512Byte.\n");
+                printf("Check Filesize!! (%d) \n", InputSize );
+                goto ERR_END;
+            }		
 			OutputSize = NXP4330_SRAM_SIZE;
 		}
 		else if( (0 == strcmp( cpu_name, "NXP5430" )) || (0 == strcmp( cpu_name, "S5P6818" )) )
@@ -195,10 +202,17 @@ int main(int argc, char **argv)
 		printf("Did not enter the Filesize files.\r\n");
 		goto ERR_END;
 	}
-
+    else
+    {
+        if( (OutputSize <= (16*1024)) )
+            OutputSize = 16*1024;
+    }
+	
+#if 0
 	if( (OutputSize % 512) != 0 )
 		MallocSize = ((OutputSize / BLOCKSIZE) + 1) * BLOCKSIZE;
 	else
+#endif
 		MallocSize = OutputSize;
 
     Out_Buffer 	= (U8*)malloc( MallocSize );
@@ -247,10 +261,10 @@ int main(int argc, char **argv)
         pBootInfo->DBI.SDMMCBI.CRC32 = __calc_crc((void*)(Out_Buffer + NSIHSIZE), (InputSize) );
 		if( (InputSize + NSIHSIZE) <= (NXP4330_SRAM_SIZE-16) )
 		{
-			uCrc.iCrc = __calc_crc((void*)(Out_Buffer), (OutputSize-16) );		
+			uCrc.iCrc = __calc_crc((void*)(Out_Buffer), (NXP4330_SRAM_SIZE-16) );		
 			for(i = 0; i < CRCSIZE; i++)
 			{	
-				Out_Buffer[OutputSize-16+i] = uCrc.chCrc[i];
+				Out_Buffer[NXP4330_SRAM_SIZE-16+i] = uCrc.chCrc[i];
             #if 0
 				printf("(BASEADDR + 0x%X) - CRC[%d]: %X(%X) \r\n", 
 				(OutputSize-16+i), i, Out_Buffer[OutputSize-16+i], uCrc.chCrc[i]);
@@ -627,17 +641,17 @@ static void usage(void)
 	printf(" Usage: How to use the program? 			                              \n"); 
 	printf(" Ubuntu  > How to use?                                                    \n");
 	printf("  #>./BOOT_BINGEN -h 0 or ./BOOT_BINGEN \n");
-	printf("  #>./BOOT_BINGEN -c NXP4330 -t 2ndboot -b SPI -n NXP4330_NSIH_V05_spi_800.txt -i pyrope_2ndboot_spi.bin -o 2ndboot_spi.bin \n" );
-	printf("  #>./BOOT_BINGEN -c NXP4330 -t 2ndboot -b SD  -n NXP4330_NSIH_V05_sd_800.txt  -i pyrope_2ndboot_sdmmc.bin -o 2ndboot_sdmmc.bin \n" );
-	printf("  #>./BOOT_BINGEN -c NXP4330 -t 3rdboot -b SPI -n NXP4330_NSIH_V05_spi_800.txt -i u-boot.bin -o 3rdboot_spi.bin -l 40100000 -e 40100000 \n" );
-	printf("  #>./BOOT_BINGEN -c NXP4330 -t 3rdboot -b SD  -n NXP4330_NSIH_V05_sd_800.txt  -i u-boot.bin -o 3rdboot_sdmmc.bin -l 40100000 -e 40100000 \n" );
+	printf("  #>./BOOT_BINGEN -c NXP4330 -t 2ndboot -n NXP4330_NSIH_V05_spi_800.txt -i pyrope_2ndboot_spi.bin -o 2ndboot_spi.bin \n" );
+	printf("  #>./BOOT_BINGEN -c NXP4330 -t 2ndboot -n NXP4330_NSIH_V05_sd_800.txt  -i pyrope_2ndboot_sdmmc.bin -o 2ndboot_sdmmc.bin \n" );
+	printf("  #>./BOOT_BINGEN -c NXP4330 -t 3rdboot -n NXP4330_NSIH_V05_spi_800.txt -i u-boot.bin -o 3rdboot_spi.bin -l 40100000 -e 40100000 \n" );
+	printf("  #>./BOOT_BINGEN -c NXP4330 -t 3rdboot -n NXP4330_NSIH_V05_sd_800.txt  -i u-boot.bin -o 3rdboot_sdmmc.bin -l 40100000 -e 40100000 \n" );
     printf("\n");
 	printf(" Windows > How to use?                                                    \n");
     printf("  #>BOOT_BINGEN.exe -h 0 or BOOT_BINGEN.exe \n");
-	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 2ndboot -b SPI -n NXP4330_NSIH_V05_spi_800.txt -i pyrope_2ndboot_spi.bin -o 2ndboot_spi.bin \n" );
-	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 2ndboot -b SD  -n NXP4330_NSIH_V05_sd_800.txt  -i pyrope_2ndboot_sdmmc.bin -o 2ndboot_sdmmc.bin \n" );
-	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 3rdboot -b SPI -n NXP4330_NSIH_V05_spi_800.txt -i u-boot.bin -o 3rdboot_spi.bin -l 40100000 -e 40100000 \n" );
-	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 3rdboot -b SD  -n NXP4330_NSIH_V05_sd_800.txt  -i u-boot.bin -o 3rdboot_sdmmc.bin -l 40100000 -e 40100000 \n" );	
+	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 2ndboot -n NXP4330_NSIH_V05_spi_800.txt -i pyrope_2ndboot_spi.bin -o 2ndboot_spi.bin \n" );
+	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 2ndboot -n NXP4330_NSIH_V05_sd_800.txt  -i pyrope_2ndboot_sdmmc.bin -o 2ndboot_sdmmc.bin \n" );
+	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 3rdboot -n NXP4330_NSIH_V05_spi_800.txt -i u-boot.bin -o 3rdboot_spi.bin -l 40100000 -e 40100000 \n" );
+	printf("  #>BOOT_BINGEN.exe -c NXP4330 -t 3rdboot -n NXP4330_NSIH_V05_sd_800.txt  -i u-boot.bin -o 3rdboot_sdmmc.bin -l 40100000 -e 40100000 \n" );	
 
 	printf("\n");
 }
