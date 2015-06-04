@@ -89,6 +89,17 @@ typedef enum {
 	VID_CHG_VBV                     = (1 << 9),     // Reference decoder buffer size in byte
 } VID_ENC_CHG_PARAM_E;
 
+enum {
+	NONE_FIELD                      = 0,
+	FIRST_FIELD                     = 0,
+	SECOND_FIELD                    = 1
+};
+
+enum {
+	DECODED_FRAME                   = 0,
+	DISPLAY_FRAME                   = 1
+};
+
 
 //
 //  Encoder Specific APIs
@@ -191,16 +202,16 @@ typedef struct tNX_VID_DEC_OUT{
 	int32_t outDecIdx;                      // Decode Index
 	int32_t width;
 	int32_t height;
-	int32_t picType;                        // Picture Type
+	int32_t picType[2];                     // Picture Type
 
-	uint64_t timeStamp;                     // Time stamp
+	uint64_t timeStamp[2];                  // Time stamp
 	uint32_t strmReadPos;                   // Remained bitstream buffer size
 	uint32_t strmWritePos;                  // Remained bitstream buffer size
 
 	int32_t isInterlace;                    // 0 : progressive, 1 : interlace
 	int32_t topFieldFirst;                  // 0 : top field first, 1 : bottom field first
 
-	int32_t outFrmReliable_0_100;           // Percentage of MB's are reliable ranging from 0[all damage] to 100 [all clear]
+	int32_t outFrmReliable_0_100[2];        // Percentage of MB's are reliable ranging from 0[all damage] to 100 [all clear]
 
 	// for VC1 Decoder
 	int32_t multiResolution;                // 0 : non multi-resulution, 1 : horizontal scale is half, 2 : vertical scale is half, 3 : horizontal & vertical scale is half
@@ -217,8 +228,8 @@ typedef struct tNX_VID_SEQ_IN{
 	int32_t height;
 
 	// for External Buffer ( Optional )
-	NX_VID_MEMORY_HANDLE *pMemHandle;
-	int32_t numBuffers;
+	NX_VID_MEMORY_HANDLE *pMemHandle;       // Frame buffer for external buffer mode
+	int32_t numBuffers;                     // Number of external frame buffer
 
 	int32_t addNumBuffers;                  // Add to minimum frame buffer number (total frame buffer number = minimum number + addNumBuffers)
 	                                        // This value is valid when External Buffer is not used.
@@ -232,12 +243,12 @@ typedef struct tNX_VID_SEQ_IN{
 }NX_VID_SEQ_IN;
 
 typedef struct tNX_VID_SEQ_OUT{
-	int32_t minBuffers;
+	int32_t minBuffers;                     // Needed minimum number of decoded frames
 	int32_t numBuffers;
 	int32_t width;
 	int32_t height;
 	int32_t frameBufDelay;
-	int32_t isInterlace;
+	int32_t isInterlace;                    // 0 : Progressive YUV, 1 : interlaced YUV
 
 	int32_t frameRateNum;                   // Frame Rate Numerator
 	int32_t frameRateDen;                   // Frame Rate Denominator (-1 : no information)

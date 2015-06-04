@@ -436,10 +436,11 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 	// INITIALIZATION
 	//==============================================================================
 	{
-		NX_VID_ENC_INIT_PARAM encInitParam = {0, };			         // Encoder Parameters
-		uint8_t *seqBuffer = (uint8_t *)malloc( MAX_SEQ_BUF_SIZE );  // SPS/PPS or JPEG Header
+		NX_VID_ENC_INIT_PARAM encInitParam;									// Encoder Parameters
+		uint8_t *seqBuffer = (uint8_t *)malloc( MAX_SEQ_BUF_SIZE );		// SPS/PPS or JPEG Header
 #ifndef ANDROID
-		DISPLAY_INFO dspInfo = {0, };
+		DISPLAY_INFO dspInfo;
+		memset( &dspInfo, 0, sizeof(dspInfo) );	
 
 		// Initailize Display
 		dspInfo.port = 0;
@@ -472,6 +473,7 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 		pAppData->fpsDen = ( pAppData->fpsDen ) ? ( pAppData->fpsDen ) : ( 1 );
 		pAppData->gop = ( pAppData->gop ) ? ( pAppData->gop ) : ( pAppData->fpsNum / pAppData->fpsDen );
 
+		memset( &encInitParam, 0, sizeof(encInitParam) );
 		encInitParam.width = inWidth;
 		encInitParam.height = inHeight;
 		encInitParam.fpsNum = pAppData->fpsNum;

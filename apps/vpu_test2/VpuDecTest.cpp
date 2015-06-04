@@ -20,26 +20,14 @@
 unsigned char streamBuffer[4*1024*1024];
 unsigned char seqData[1024*4];
 
-//#define _SEEK_TEST_
-
+//#define _ERROR_AND_SEEK_
+//#define _DUMP_ES_
 
 //	Display Window Screen Size
 #define	WINDOW_WIDTH		1024
 #define	WINDOW_HEIGHT		600
 #define	NUMBER_OF_BUFFER	12
 
-
-#ifndef ANDROID
-/*static uint64_t NX_GetTickCount( void )
-{
-	uint64_t ret;
-	struct timeval	tv;
-	struct timezone	zv;
-	gettimeofday( &tv, &zv );
-	ret = ((uint64_t)tv.tv_sec)*1000000 + tv.tv_usec;
-	return ret;
-}*/
-#endif
 
 int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 {
@@ -62,10 +50,11 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 	int32_t instanceIdx;
 	int32_t brokenB = 0;
 	int32_t iPrevIdx = -1;
-#ifndef ANDROID
 	uint64_t startTime, endTime, totalTime = 0;
-#endif
 	FILE *fpOut = NULL;
+#ifdef _DUMP_ES_
+	FILE *fpES = fopen("enc.bit", "wb");
+#endif
 
 	CMediaReader *pMediaReader = new CMediaReader();
 	if( !pMediaReader->OpenFile( pAppData->inFileName ) )
@@ -122,11 +111,10 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 	mp4Class = fourCCToMp4Class( codecTag );
 	if( mp4Class == -1 )
 		mp4Class = codecIdToMp4Class( codecId );
-	//mp4Class = 0;
 
 	printf("vpuCodecType = %d, mp4Class = %d\n", vpuCodecType, mp4Class );
 
-	if( NULL == (hDec = NX_VidDecOpen(vpuCodecType, mp4Class, 0, &instanceIdx)) )
+	if( (hDec = NX_VidDecOpen(vpuCodecType, mp4Class, 0, &instanceIdx)) == NULL )
 	{
 		printf("NX_VidDecOpen(%d) failed!!!\n", vpuCodecType);
 		return -1;
@@ -137,9 +125,9 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 	while( 1 )
 	{
 		//	ReadStream
-		if( 0 != pMediaReader->ReadStream( CMediaReader::MEDIA_TYPE_VIDEO, streamBuffer+seqSize, &size, &key, &timeStamp ) )
+		if( pMediaReader->ReadStream( CMediaReader::MEDIA_TYPE_VIDEO, streamBuffer+seqSize, &size, &key, &timeStamp ) != 0 )
 		{
-			break;
+			size = 0;
 		}
 
 		if( !bInit && !key )
@@ -162,9 +150,12 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			seqIn.pMemHandle = &hVideoMemory[0];
 #endif
 
-#if 1
+#ifdef _DUMP_ES_
+			fwrite(seqIn.seqInfo, 1, seqIn.seqSize, fpES);
+#endif
+
 			vidRet = NX_VidDecParseVideoCfg(hDec, &seqIn, &seqOut);
-			printf("Parser Return = %d \n", vidRet );
+			printf("Parser Return = %d(%d) \n", vidRet, seqOut.unsupportedFeature );
 			if ( vidRet != VID_ERR_NONE )
 			{
 				printf("Parser Fail \n");
@@ -174,9 +165,6 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			seqIn.width = seqOut.width;
 			seqIn.height = seqOut.height;
 			vidRet = NX_VidDecInit( hDec, &seqIn );
-#else
-			vidRet = NX_VidDecInit( hDec, &seqIn, &seqOut );
-#endif
 			if( vidRet == VID_NEED_STREAM )
 			{
 				printf("VPU Initialize Failed!!!\n");
@@ -222,42 +210,21 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			printf("vp8ScaleHeight = %d \n", seqOut.vp8ScaleHeight);
 			printf("unsupportedFeature = %d \n", seqOut.unsupportedFeature);
 
-			seqSize = 0;
 			bInit = 1;
+			seqSize = 0;
 			size = 0;
 			continue;
 		}
 
 		memset(&decIn, 0, sizeof(decIn));
+
 		decIn.strmBuf = streamBuffer;
-#ifndef _SEEK_TEST_
 		decIn.strmSize = size;
-		/*if ( frameCount % 50 == 7 )
-		{
-			unsigned char *pbyTmp = streamBuffer;
-			pbyTmp[size/4] = ~(pbyTmp[size/4]);
-			pbyTmp[size/2] = ~(pbyTmp[size/2]);
-		}*/
-#else
-		decIn.strmSize = ( frameCount % 50 == 7 ) ? (size / 2) : (size);
-#endif
 		decIn.timeStamp = timeStamp;
 		decIn.eos = ( decIn.strmSize > 0 || frameCount == 0 ) ? (0) : (1);
 
-#ifdef _SEEK_TEST_
-		/*if ( frameCount < 4000 )
-		{
-			size = 0;
-			frameCount++;
-			continue;
-		}
-		else if ( frameCount == 4000 )
-		{
-			decOut.outFrmReliable_0_100 = 0;
-			decOut.outDecIdx = 0;
-		}*/
-
-		if ( (decOut.outFrmReliable_0_100 != 100) && (decOut.outDecIdx >= 0) && (decIn.strmSize > 0) && (frameCount > 0) )
+#ifdef _ERROR_AND_SEEK_
+		if ( (decOut.outFrmReliable_0_100[DEC_DECODED_FRAME] != 100) && (decOut.outDecIdx >= 0) && (decIn.strmSize > 0) && (frameCount > 0) )
 		{
 			int32_t iFrameType;
 			int32_t iCheckType = ( vpuCodecType == NX_AVC_DEC ) ? ( PIC_TYPE_IDR ) : ( PIC_TYPE_I );
@@ -292,39 +259,32 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 		}
 #endif
 
-#ifndef ANDROID
-		startTime = NX_GetTickCount();
+#ifdef _DUMP_ES_
+		fwrite(decIn.strmBuf, 1, decIn.strmSize, fpES);
 #endif
+
+		startTime = NX_GetTickCount();
 		vidRet = NX_VidDecDecodeFrame( hDec, &decIn, &decOut );
-#ifndef ANDROID
 		endTime = NX_GetTickCount();
 		totalTime += (endTime - startTime);
 
-		//if ( decOut.outFrmReliable_0_100 != 100 ) {
-		printf("Frame[%5d]: size=%6d, DspIdx=%2d, DecIdx=%2d, InTimeStamp=%7lld, outTimeStamp=%7lld, time=%6lld, interlace=%d(%d), Reliable=%d, type = %d, MultiResol=%d, upW=%d, upH=%d, ",
-			frameCount, decIn.strmSize, decOut.outImgIdx, decOut.outDecIdx, timeStamp, decOut.timeStamp, (endTime-startTime), decOut.isInterlace, decOut.topFieldFirst, decOut.outFrmReliable_0_100, decOut.picType, decOut.multiResolution, decOut.upSampledWidth, decOut.upSampledHeight);
-		//}
-		printf("(%2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x)\n", decIn.strmBuf[0], decIn.strmBuf[1], decIn.strmBuf[2], decIn.strmBuf[3], decIn.strmBuf[4], decIn.strmBuf[5], decIn.strmBuf[6], decIn.strmBuf[7],
-			decIn.strmBuf[8], decIn.strmBuf[9], decIn.strmBuf[10], decIn.strmBuf[11], decIn.strmBuf[12], decIn.strmBuf[13], decIn.strmBuf[14], decIn.strmBuf[15]);
-#else
-		printf("Frame[%5d]: size=%6d, DspIdx=%2d, DecIdx=%2d, InTimeStamp=%7lld, outTimeStamp=%7lld, interlace=%d(%d), Reliable=%d, type = %d, MultiResol=%d, upW=%d, upH=%d, ",
-			frameCount, decIn.strmSize, decOut.outImgIdx, decOut.outDecIdx, timeStamp, decOut.timeStamp, decOut.isInterlace, decOut.topFieldFirst, decOut.outFrmReliable_0_100, decOut.picType, decOut.multiResolution, decOut.upSampledWidth, decOut.upSampledHeight);
-		printf("(%2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x)\n", decIn.strmBuf[0], decIn.strmBuf[1], decIn.strmBuf[2], decIn.strmBuf[3], decIn.strmBuf[4], decIn.strmBuf[5], decIn.strmBuf[6], decIn.strmBuf[7],
-			decIn.strmBuf[8], decIn.strmBuf[9], decIn.strmBuf[10], decIn.strmBuf[11], decIn.strmBuf[12], decIn.strmBuf[13], decIn.strmBuf[14], decIn.strmBuf[15]);
-#endif
+		printf("Frame[%5d]: size=%6d, DspIdx=%2d, DecIdx=%2d, InTimeStamp=%7lld, outTimeStamp=%7lld, %7lld, time=%6lld, interlace=%d(%d), Reliable=%3d, %3d, type = %d, %d, Rd = %x, Wd = %x, %d \n",
+			frameCount, decIn.strmSize, decOut.outImgIdx, decOut.outDecIdx, decIn.timeStamp, decOut.timeStamp[FIRST_FIELD], decOut.timeStamp[SECOND_FIELD], (endTime-startTime), decOut.isInterlace, decOut.topFieldFirst,
+			decOut.outFrmReliable_0_100[DECODED_FRAME], decOut.outFrmReliable_0_100[DISPLAY_FRAME], decOut.picType[DECODED_FRAME], decOut.picType[DISPLAY_FRAME], decOut.strmReadPos, decOut.strmWritePos, decOut.strmWritePos - decOut.strmReadPos );
 
-		if( vidRet == VID_NEED_STREAM )
-		{
-			printf("VID_NEED_MORE_BUF NX_VidDecDecodeFrame\n");
-			continue;
-		}
+		//printf("Frame[%5d]: size=%6d, DspIdx=%2d, DecIdx=%2d, InTimeStamp=%7lld, outTimeStamp=%7lld, %7lld, time=%6lld, interlace=%d(%d), Reliable=%3d, %3d, type = %d, %d, MultiResol=%d, upW=%d, upH=%d\n",
+		//	frameCount, decIn.strmSize, decOut.outImgIdx, decOut.outDecIdx, decIn.timeStamp, decOut.timeStamp[FIRST_FIELD], decOut.timeStamp[SECOND_FIELD], (endTime-startTime), decOut.isInterlace, decOut.topFieldFirst,
+		//	decOut.outFrmReliable_0_100, decOut.outFrmReliable_0_100[DISPLAY_FRAME], decOut.picType[DECODED_FRAME], decOut.picType[DISPLAY_FRAME], decOut.multiResolution, decOut.upSampledWidth, decOut.upSampledHeight);
+		//printf("(%2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x %2x)\n", decIn.strmBuf[0], decIn.strmBuf[1], decIn.strmBuf[2], decIn.strmBuf[3], decIn.strmBuf[4], decIn.strmBuf[5], decIn.strmBuf[6], decIn.strmBuf[7],
+		//	decIn.strmBuf[8], decIn.strmBuf[9], decIn.strmBuf[10], decIn.strmBuf[11], decIn.strmBuf[12], decIn.strmBuf[13], decIn.strmBuf[14], decIn.strmBuf[15]);
+
 		if( vidRet < 0 )
 		{
 			printf("Decoding Error!!!\n");
 			exit(-2);
 		}
 
-#ifdef _SEEK_TEST_
+#ifdef _ERROR_AND_SEEK_
 		if ( (brokenB < 2) && (decOut.outDecIdx >= 0) )
 		{
 			int32_t iFrameType;
@@ -391,12 +351,12 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 		}
 		else if ( decIn.eos == 1)		break;
 
-		if ( (decOut.outFrmReliable_0_100 != 100) && (decOut.outDecIdx >= 0) )
+#ifdef _ERROR_AND_SEEK_
+		if ( (decOut.outFrmReliable_0_100[DEC_DECODED_FRAME] != 100) && (decOut.outDecIdx >= 0) )
 		{
 			NX_VidDecFlush( hDec );
 		}
-
-		//if ( frameCount > 5000 ) break;
+#endif
 
 		frameCount++;
 	}
@@ -409,12 +369,17 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 #else
 	if( hDsp )
 		NX_DspClose(hDsp);
+
 	printf("Avg Time = %6lld (%6lld / %d) \n", totalTime / frameCount, totalTime, frameCount);
 #endif
 	if( pMediaReader )
 		delete pMediaReader;
 	if ( fpOut )
 		fclose(fpOut);
+#ifdef _DUMP_ES_
+	if ( fpES )
+		fclose(fpES);
+#endif
 
 	return 0;
 }
