@@ -11,7 +11,7 @@
 //  Module      :
 //  File        :
 //  Description :
-//  Author      : 
+//  Author      :
 //  Export      :
 //  History     :
 //
@@ -90,6 +90,7 @@ typedef enum {
     nxp_v4l2_mlc1_video     = 30,
     nxp_v4l2_resol          = 31,
     nxp_v4l2_hdmi           = 32,
+    nxp_v4l2_tvout          = 33,
     nxp_v4l2_id_max,
 } nxp_v4l2_id;
 
@@ -106,6 +107,7 @@ struct V4l2UsageScheme {
     bool useMlc1Video;
     bool useResol;
     bool useHdmi;
+    bool useTvout;
 };
 
 typedef void* V4L2_PRIVATE_HANDLE;
@@ -127,7 +129,7 @@ int v4l2_get_ctrl(V4L2_PRIVATE_HANDLE pHandle, int id, int ctrl_id, int *value);
 int v4l2_reqbuf(V4L2_PRIVATE_HANDLE pHandle, int id, int buf_count);
 #ifdef ANDROID
 //int v4l2_qbuf(int id, int plane_num, int index0, struct private_handle_t *b0, int index1, struct private_handle_t *b1);
-int v4l2_qbuf(V4L2_PRIVATE_HANDLE pHandle, int id, int plane_num, int index0, struct private_handle_t const *b0, int index1, 
+int v4l2_qbuf(V4L2_PRIVATE_HANDLE pHandle, int id, int plane_num, int index0, struct private_handle_t const *b0, int index1,
 struct private_handle_t const *b1, int *syncfd0 = NULL, int *syncfd1 = NULL);
 #endif
 int	v4l2_qbuf(V4L2_PRIVATE_HANDLE pHandle, int id, int plane_num, int index0, struct nxp_vid_buffer *b0, int index1, struct nxp_vid_buffer *b1);

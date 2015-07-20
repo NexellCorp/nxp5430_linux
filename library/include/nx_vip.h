@@ -81,6 +81,8 @@ int32_t			NX_VipDequeueBuffer			( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppMem, i
 int32_t			NX_VipQueueBuffer2			( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pClipMem, NX_VID_MEMORY_INFO *pDeciMem );
 int32_t			NX_VipDequeueBuffer2		( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppClipMem, NX_VID_MEMORY_INFO **ppDeciMem, int64_t *pClipTimeStamp, int64_t *pDeciTimeStamp );
 
+int32_t 		NX_VipChangeConfig			( VIP_HANDLE hVip, VIP_INFO *pVipInfo );
+
 int32_t			NX_VipGetCurrentQueuedCount	( VIP_HANDLE hVip, int32_t *maxSize );
 
 #ifdef __cplusplus

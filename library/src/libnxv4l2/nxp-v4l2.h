@@ -71,6 +71,7 @@ typedef enum {
     nxp_v4l2_mlc1_video     = 30,
     nxp_v4l2_resol          = 31,
     nxp_v4l2_hdmi           = 32,
+    nxp_v4l2_tvout          = 33,
     nxp_v4l2_id_max,
 } nxp_v4l2_id;
 
@@ -87,6 +88,7 @@ struct V4l2UsageScheme {
     bool useMlc1Video;
     bool useResol;
     bool useHdmi;
+    bool useTvout;
 };
 
 int v4l2_init(const struct V4l2UsageScheme *scheme);

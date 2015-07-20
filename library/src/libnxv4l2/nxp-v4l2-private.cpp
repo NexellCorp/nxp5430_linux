@@ -20,7 +20,8 @@
 
 #define V4L2_SYS_PATH                   "/sys/class/video4linux"
 
-#define MEDIA_ENTITY_COUNT              23
+//#define MEDIA_ENTITY_COUNT              23
+#define MEDIA_ENTITY_COUNT              24
 
 /* media entity name */
 /* E_ : entity */
@@ -45,6 +46,7 @@
 #define E_VIDEO_MLC1_VIDEO_NAME         "VIDEO MLC VID1"
 #define E_RESOL_NAME                    "NXP RESC"
 #define E_HDMI_NAME                     "NXP HDMI"
+#define E_TVOUT_NAME                    "NXP TVOUT"
 
 #ifndef ANDROID
 #if 1
@@ -130,6 +132,7 @@ class V4l2NexellPrivate {
         Mlc1VideoComposite  = 30,
         Resol               = 31,
         Hdmi                = 32,
+        Tvout               = 33,
         INTERNAL_ID_MAX
     } InternalID;
 
@@ -415,6 +418,9 @@ V4l2NexellPrivate::DeviceInfo *V4l2NexellPrivate::getDevice(char *name)
     } else if (!strncmp(name, E_VIDEO_MLC1_VIDEO_NAME, strlen(E_VIDEO_MLC1_VIDEO_NAME))) {
         ALOGV("find video mlc1 video");
         pDevice = &Devices[Mlc1Video];
+    } else if (!strncmp(name, E_TVOUT_NAME, strlen(E_TVOUT_NAME))) {
+        ALOGV("find tvout");
+        pDevice = &Devices[Tvout];
     } else {
         ALOGE("Unknown name %s", name);
     }
@@ -877,6 +883,16 @@ int V4l2NexellPrivate::createDevices()
             return ret;
         }
         //Devices[Hdmi].Device = device;
+    }
+
+    /* TVOUT */
+    if (UsageScheme.useTvout) {
+        ret = createSubDevice(Tvout, &device);
+        if (ret < 0) {
+            ALOGE("can't create tvout");
+            return ret;
+        }
+        //Devices[Tvout].Device = device;
     }
 
     /* compositie : all video devices have their subdevices */

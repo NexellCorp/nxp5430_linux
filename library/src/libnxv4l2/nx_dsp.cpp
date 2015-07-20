@@ -18,6 +18,8 @@
 //------------------------------------------------------------------------------
 
 #include <stdio.h>
+#include <stdbool.h>
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -63,10 +65,10 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 	memset(&s, 0, sizeof(s));
 
 #ifndef DISABLE_PORT_CONFIG
-	if( pDspInfo->port == DISPLAY_PORT_LCD ) {
-		s.useHdmi		= false;
-	} else {
+	if( pDspInfo->port == DISPLAY_PORT_HDMI ) {
 		s.useHdmi		= true;
+	} else if( pDspInfo->port == DISPLAY_PORT_TVOUT ) {
+		s.useTvout		= true;
 	}
 #else
 	s.useHdmi		= false;
@@ -98,7 +100,7 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 	}
 
 #ifndef DISABLE_PORT_CONFIG
-	if( pDspInfo->port != DISPLAY_PORT_LCD ) {
+	if( pDspInfo->port == DISPLAY_PORT_HDMI ) {
 		result = v4l2_link(hPrivate, mlcPin, nxp_v4l2_hdmi);
 		if( result < 0 ) {
 			printf("%s(): v4l2_link() failed.\n", __func__);
@@ -111,7 +113,15 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 		}
 #endif
 	}
+	else if( pDspInfo->port == DISPLAY_PORT_TVOUT )
 #endif	//	DISABLE_PORT_CONFIG
+	{
+		result = v4l2_link(hPrivate, mlcPin, nxp_v4l2_tvout);
+		if( result < 0 ) {
+			printf("%s(): v4l2_link() failed.\n", __func__);
+			return NULL;
+		}
+	}
 
 	// check display plane and set format.
 	if( pDspInfo->numPlane == 1 ) {
@@ -372,7 +382,7 @@ int32_t NX_DspVideoSetPosition( DISPLAY_HANDLE hDisplay, DSP_IMG_RECT *pRect )
 		if( 0 > v4l2_set_crop_with_pad(hDisplay->hPrivate, hDisplay->mlcId, 0, pRect->left, pRect->top, pRect->right-pRect->left, pRect->bottom-pRect->top) )
 		{
 			printf("%s():Line(%d) Error : v4l2_set_crop failed(%p,%d,%d,%d,%d,%d)!!!\n",
-				__func__, __LINE__, hDisplay->hPrivate, hDisplay->mlcId, 0, pRect->left, pRect->top, pRect->right-pRect->left, pRect->bottom-pRect->top );
+				__func__, __LINE__, hDisplay->hPrivate, hDisplay->mlcId, pRect->left, pRect->top, pRect->right-pRect->left, pRect->bottom-pRect->top );
 			return -1;
 		}
 
@@ -395,7 +405,7 @@ int32_t NX_DspVideoSetPriority( int32_t module, int32_t priority )
 		mlcId = nxp_v4l2_mlc0_video;
 	}
 	else if( module == DISPLAY_MODULE_MLC1 ) {
-		s.useMlc0Video	= false;
+		s.useMlc1Video	= true;
 		mlcId = nxp_v4l2_mlc1_video;
 	}
 	else {
@@ -429,7 +439,7 @@ int32_t NX_DspVideoGetPriority( int32_t module, int32_t *priority )
 		mlcId = nxp_v4l2_mlc0_video;
 	}
 	else if( module == DISPLAY_MODULE_MLC1 ) {
-		s.useMlc0Video	= false;
+		s.useMlc1Video	= true;
 		mlcId = nxp_v4l2_mlc1_video;
 	}
 	else {

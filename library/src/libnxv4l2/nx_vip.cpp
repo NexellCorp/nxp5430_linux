@@ -195,7 +195,7 @@ void NX_VipClose( VIP_HANDLE hVip )
 			if( CLIP_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->cliperId );
 			if( DECI_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->decimatorId );
 
-			hVip->streamOnFlag = 0;
+			hVip->streamOnFlag = false;
 		}
 		
 		if( hVip->hPrivate ) v4l2_exit(hVip->hPrivate);
@@ -286,7 +286,7 @@ int32_t NX_VipQueueBuffer( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pMem )
 
 	if( !hVip->streamOnFlag )
 	{
-		hVip->streamOnFlag = 1;
+		hVip->streamOnFlag = true;
 		if( DECI_STATUS(hVip->mode) ) v4l2_streamon( hVip->hPrivate, hVip->decimatorId );
 		if( CLIP_STATUS(hVip->mode) ) v4l2_streamon( hVip->hPrivate, hVip->cliperId );
 	}
@@ -419,10 +419,12 @@ int32_t NX_VipQueueBuffer2( VIP_HANDLE hVip, NX_VID_MEMORY_INFO *pClipMem, NX_VI
 	}
 
 	if( !hVip->streamOnFlag ) {
-		hVip->streamOnFlag = 1;
+		hVip->streamOnFlag = true;
 		v4l2_streamon( hVip->hPrivate, hVip->decimatorId );
 		v4l2_streamon( hVip->hPrivate, hVip->cliperId );
 	}
+
+	return 0;
 }
 
 int32_t NX_VipDequeueBuffer2( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppClipMem, NX_VID_MEMORY_INFO **ppDeciMem, int64_t *pClipTimeStamp, int64_t *pDeciTimeStamp )
@@ -470,6 +472,75 @@ int32_t NX_VipDequeueBuffer2( VIP_HANDLE hVip, NX_VID_MEMORY_INFO **ppClipMem, N
 	pthread_mutex_unlock( &hVip->hMutex );
 
 	return ret;
+}
+
+int32_t NX_VipChangeConfig( VIP_HANDLE hVip, VIP_INFO *pVipInfo )
+{
+	int32_t i;
+	pthread_mutex_lock( &hVip->hMutex );
+	
+	// a. stream off
+	if( hVip->streamOnFlag ) {
+		if( CLIP_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->cliperId );
+		if( DECI_STATUS(hVip->vipInfo.mode) ) v4l2_streamoff( hVip->hPrivate, hVip->decimatorId );
+
+		hVip->streamOnFlag = false;
+	}
+
+	// b. reconfiguration
+	if( pVipInfo->port != VIP_PORT_MIPI ) {
+		v4l2_set_format( hVip->hPrivate, hVip->sensorId, pVipInfo->width, pVipInfo->height, PIXCODE_YUV422_PACKED );
+	}
+	else {
+		v4l2_set_format( hVip->hPrivate, hVip->sensorId, pVipInfo->width, pVipInfo->height, PIXCODE_YUV422_PACKED );
+		v4l2_set_format( hVip->hPrivate, nxp_v4l2_mipicsi, pVipInfo->width, pVipInfo->height, PIXCODE_YUV422_PACKED );
+	}
+
+	pVipInfo->cropWidth		= ALIGN( pVipInfo->cropWidth, 32 );
+	pVipInfo->outWidth		= ALIGN( pVipInfo->outWidth, 32 );
+
+	if( CLIP_STATUS(pVipInfo->mode) ) {
+		if( pVipInfo->numPlane == 3 )
+			v4l2_set_format( hVip->hPrivate, hVip->cliperId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_PLANAR );
+		else 
+			v4l2_set_format( hVip->hPrivate, hVip->cliperId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_YV12 );
+
+		v4l2_set_crop_with_pad( hVip->hPrivate, hVip->cliperId, 0, pVipInfo->cropX, pVipInfo->cropY, pVipInfo->cropWidth, pVipInfo->cropHeight );
+		v4l2_reqbuf( hVip->hPrivate, hVip->cliperId, VIP_MAX_BUF_SIZE );
+	}
+
+	if( DECI_STATUS(pVipInfo->mode) ) {
+		if( pVipInfo->numPlane == 3 )
+			v4l2_set_format( hVip->hPrivate, hVip->decimatorId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_PLANAR );
+		else
+			v4l2_set_format( hVip->hPrivate, hVip->decimatorId, pVipInfo->width, pVipInfo->height, PIXFORMAT_YUV420_YV12 );
+
+		if( pVipInfo->mode == VIP_MODE_CLIP_DEC ) {
+			v4l2_set_crop_with_pad( hVip->hPrivate, hVip->decimatorId, 2, pVipInfo->cropX, pVipInfo->cropY, pVipInfo->cropWidth, pVipInfo->cropHeight );
+		}
+		
+		v4l2_set_crop_with_pad( hVip->hPrivate, hVip->decimatorId, 0, 0, 0, pVipInfo->outWidth, pVipInfo->outHeight );
+		v4l2_reqbuf( hVip->hPrivate, hVip->decimatorId, VIP_MAX_BUF_SIZE );
+	}
+
+	// c. variable initilaize
+	hVip->vipInfo.width			= pVipInfo->width;
+	hVip->vipInfo.height		= pVipInfo->height;
+	hVip->vipInfo.cropX			= pVipInfo->cropX;
+	hVip->vipInfo.cropY			= pVipInfo->cropY;
+	hVip->vipInfo.cropWidth		= pVipInfo->cropWidth;
+	hVip->vipInfo.cropHeight	= pVipInfo->cropHeight;
+	hVip->vipInfo.outWidth		= pVipInfo->outWidth;
+	hVip->vipInfo.outHeight		= pVipInfo->outHeight;
+	
+	hVip->curQueuedSize 		= 0;
+
+	for( i = 0; i < VIP_MAX_BUF_SIZE; i++ ) {
+		hVip->pMgmtMem1[i] = NULL;
+		hVip->pMgmtMem2[i] = NULL;
+	}
+	pthread_mutex_unlock( &hVip->hMutex );
+	return 0;
 }
 
 int32_t NX_VipGetCurrentBufCount( VIP_HANDLE hVip, int32_t *maxSize )

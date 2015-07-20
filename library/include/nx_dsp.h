@@ -32,6 +32,7 @@
 enum {
 	DISPLAY_PORT_LCD	= 0x00,
 	DISPLAY_PORT_HDMI	= 0x01,
+	DISPLAY_PORT_TVOUT	= 0x02,		// S5P6818 Only
 };
 
 enum {

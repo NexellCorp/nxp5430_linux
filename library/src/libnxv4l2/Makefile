@@ -17,8 +17,8 @@ LIBRARY		+= -lnxv4l2 -lstdc++
 # Target
 # nxp-v4l2.cpp 			: v4l2 original libaray
 # nxp-v4l2-media.cpp	: v4l2 libaray for media-solution team
-COBJS			:= nx_vip.o nx_dsp.o
-CPPOBJS			:= nxp-v4l2.o nxp-v4l2-media.o nxp-v4l2-dev.o
+COBJS			:=
+CPPOBJS			:= nxp-v4l2.o nxp-v4l2-media.o nxp-v4l2-dev.o nx_vip.o nx_dsp.o
 
 NXV4L2_OBJS		:= nxp-v4l2.o nxp-v4l2-dev.o
 NXV4L2_LIBNAME	:= libv4l2-nexell
