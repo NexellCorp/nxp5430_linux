@@ -1,4 +1,4 @@
-ifeq ($(TARGET_ARCH),arm)
+ifeq ($(TARGET_ARCH),arm64)
 ifeq ($(TARGET_CPU_VARIANT2),s5p6818)
 
 LOCAL_PATH := $(call my-dir)

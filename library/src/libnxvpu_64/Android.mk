@@ -1,4 +1,4 @@
-ifeq ($(TARGET_ARCH),arm)
+ifeq ($(TARGET_ARCH),arm64)
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -6,8 +6,7 @@ include $(CLEAR_VARS)
 
 SLSIAP_INCLUDE := $(TOP)/hardware/samsung_slsi/slsiap/include
 LINUX_INCLUDE  := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library/include
-
-RATECONTROL_PATH := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library/lib/ratecontrol
+RATECONTROL_PATH := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library/lib/arm64
 
 LOCAL_SHARED_LIBRARIES :=	\
 	liblog \
