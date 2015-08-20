@@ -3,7 +3,7 @@
 
 #ifdef ARM64
 #if ARM64
-#include <nx_alloc_memi_64.h>
+#include <nx_alloc_mem_64.h>
 #else
 #include <nx_alloc_memi.h>
 #endif
