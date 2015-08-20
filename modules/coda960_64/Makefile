@@ -1,7 +1,7 @@
 TARGET			= nx_vpu
 
 #KDIR			:= ../../../../kernel/kernel-3.4.39
-KDIR			:= ../../../../kernel/kernel-3.10.39
+KDIR			:= ../../../../kernel/kernel-3.10.49
 #KDIR			:= /home/ray/devel/android/lollipop-dev/linux/kernel/kernel-3.10.49
 #STRIP_CMD		= arm-cortex_a9-linux-gnueabi-strip
 
