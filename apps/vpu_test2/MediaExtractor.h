@@ -78,11 +78,12 @@ public:
 		return false;
 	}
 
+	AVStream			*m_VideoStream;
+
 private:
 	AVFormatContext		*m_pFormatCtx;
 	//	Video Stream Information
 	int32_t				m_VideoStreamIndex;
-	AVStream			*m_VideoStream;
 	AVCodec				*m_pVideoCodec;
 	int32_t				m_NalLengthSize;
 

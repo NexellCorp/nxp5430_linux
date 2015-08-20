@@ -53,6 +53,10 @@ typedef struct {
 #define	NX_MAX_NUM_PPS		3
 #define	NX_MAX_PPS_SIZE		1024
 
+#define	NX_MAX_NUM_CFG		6
+#define	NX_MAX_CFG_SIZE		1024
+
+
 typedef struct {
 	int				version;
 	int				profile_indication;
@@ -66,6 +70,15 @@ typedef struct {
 	int				pps_length[NX_MAX_NUM_PPS];
 	unsigned char	pps_data  [NX_MAX_NUM_PPS][NX_MAX_PPS_SIZE];
 } NX_AVCC_TYPE;
+
+typedef struct {
+	int				profile;
+	int				level;
+	int				nal_length_size;
+	int				num_cfg;
+	int				cfg_length[NX_MAX_NUM_CFG];
+	unsigned char	cfg_data[NX_MAX_NUM_CFG][NX_MAX_CFG_SIZE];
+} NX_HVC1_TYPE;
 
 static int NX_ParseSpsPpsFromAVCC( unsigned char *extraData, int extraDataSize, NX_AVCC_TYPE *avcCInfo )
 {
@@ -136,6 +149,82 @@ static void NX_MakeH264StreamAVCCtoANNEXB( NX_AVCC_TYPE *avcc, unsigned char *pB
 	*size = pos;
 }
 
+static int NX_ParseHEVCCfgFromHVC1( unsigned char *extraData, int extraDataSize, NX_HVC1_TYPE *hevcInfo )
+{
+    uint8_t *ptr = (uint8_t *)extraData;
+
+    // verify minimum size and configurationVersion == 1.
+    if (extraDataSize < 7 || ptr[0] != 1) {
+        return -1;
+    }
+
+	hevcInfo->profile = (ptr[1] & 31);
+	hevcInfo->level = ptr[12];
+	hevcInfo->nal_length_size = 1 + (ptr[14 + 7] & 3);
+
+    ptr += 22;
+    extraDataSize -= 22;
+
+    int numofArrays = (char)ptr[0];
+
+    ptr += 1;
+    extraDataSize -= 1;
+    int j = 0, i = 0, cnt = 0;
+
+    for (i = 0; i < numofArrays; i++) {
+        ptr += 1;
+        extraDataSize -= 1;
+
+        // Num of nals
+        int numofNals = ptr[0] << 8 | ptr[1];
+
+        ptr += 2;
+        extraDataSize -= 2;
+
+        for (j = 0;j < numofNals;j++) {
+            if (extraDataSize < 2) {
+                return -1;
+            }
+
+            int length = ptr[0] << 8 | ptr[1];
+
+            ptr += 2;
+            extraDataSize -= 2;
+
+            if (extraDataSize < length) {
+                return -1;
+            }
+
+			hevcInfo->cfg_length[cnt] = length;
+			memcpy( hevcInfo->cfg_data[cnt], ptr, length );
+
+            ptr += length;
+            extraDataSize -= length;
+			cnt += 1;
+		}
+    }
+
+	hevcInfo->num_cfg = cnt;
+    return 0;
+}
+
+static void NX_MakeHEVCStreamHVC1ANNEXB( NX_HVC1_TYPE *hvc1, unsigned char *pBuf, int *size )
+{
+	int i;
+	int pos = 0;
+
+	for( i=0 ; i<hvc1->num_cfg ; i++ )
+	{
+		pBuf[pos++] = 0x00;
+		pBuf[pos++] = 0x00;
+		pBuf[pos++] = 0x00;
+		pBuf[pos++] = 0x01;
+		memcpy( pBuf + pos, hvc1->cfg_data[i], hvc1->cfg_length[i] );
+		pos += hvc1->cfg_length[i];
+	}
+
+	*size = pos;
+}
 
 static int PasreAVCStream( AVPacket *pkt, int nalLengthSize, unsigned char *buffer, int outBufSize )
 {
@@ -531,11 +620,7 @@ int32_t CMediaReader::ReadStream( int32_t type, uint8_t *buf, int32_t *size, int
 	else
 		return -1;
 
-#ifdef ANDROID
 	enum AVCodecID codecId = stream->codec->codec_id;
-#else
-	enum CodecID codecId = stream->codec->codec_id;
-#endif	
 	double timeStampRatio = (double)stream->time_base.num*1000./(double)stream->time_base.den;
 	do{
 		ret = av_read_frame( m_pFormatCtx, &pkt );
@@ -615,6 +700,17 @@ int32_t CMediaReader::ReadStream( int32_t type, uint8_t *buf, int32_t *size, int
 				av_free_packet( &pkt );
 				return 0;
 			}
+			else if( codecId == AV_CODEC_ID_HEVC && stream->codec->extradata_size > 0 && (stream->codec->extradata[0]==1 || stream->codec->extradata[1]==1) )
+			{
+				*size = PasreAVCStream( &pkt, m_NalLengthSize, buf, 0 );
+				*key = (pkt.flags & AV_PKT_FLAG_KEY)?1:0;
+				if( (long long)pkt.pts != AV_NOPTS_VALUE )
+					*timeStamp = pkt.pts*timeStampRatio;
+				else
+					*timeStamp = -1;
+				av_free_packet( &pkt );
+				return 0;
+			}
 			else
 			{
 				memcpy(buf, pkt.data, pkt.size );
@@ -650,11 +746,7 @@ int32_t CMediaReader::GetAudioSeqInfo( uint8_t *buf )
 int32_t CMediaReader::GetSequenceInformation( AVStream *stream, unsigned char *buffer )
 {
 	uint8_t *pbHeader = buffer;
-#ifdef ANDROID
 	enum AVCodecID codecId = stream->codec->codec_id;
-#else
-	enum CodecID codecId = stream->codec->codec_id;
-#endif
 	int32_t fourcc;
 	int32_t frameRate = 0;
 	int32_t nMetaData = stream->codec->extradata_size;
@@ -743,7 +835,7 @@ int32_t CMediaReader::GetSequenceInformation( AVStream *stream, unsigned char *b
         retSize += 4; // STRUCT_B_FRIST (LEVEL:3|CBR:1:RESERVE:4:HRD_BUFFER|24)
         PUT_LE32(pbHeader, stream->codec->bit_rate);
         retSize += 4; // hrd_rate
-		PUT_LE32(pbHeader, frameRate);            
+		PUT_LE32(pbHeader, frameRate);
         retSize += 4; // frameRate
 #else	//RCV_V1
         PUT_LE32(pbHeader, (0x85 << 24) | 0x00);
@@ -805,6 +897,25 @@ int32_t CMediaReader::GetSequenceInformation( AVStream *stream, unsigned char *b
 		m_pTheoraParser->open(m_pTheoraParser->handle, stream->codec->extradata, stream->codec->extradata_size, (int *)&thoScaleInfo);
 		retSize = theora_make_stream((void *)m_pTheoraParser->handle, buffer, 1);
 		return retSize;
+	}
+	if( (codecId == AV_CODEC_ID_HEVC) && (stream->codec->extradata_size>0) )
+	{
+		int t;
+		uint8_t *tmp = stream->codec->extradata;
+
+		if( stream->codec->extradata[0] == 0x1 )
+		{
+			NX_HVC1_TYPE hevcHeader;
+			NX_ParseHEVCCfgFromHVC1( pbMetaData, nMetaData, &hevcHeader );
+			NX_MakeHEVCStreamHVC1ANNEXB( &hevcHeader, buffer, &retSize );
+			m_NalLengthSize = hevcHeader.nal_length_size;
+			return retSize;
+		}
+		else if ( stream->codec->extradata[1] == 0x1 )
+		{
+			m_NalLengthSize = 1 + (pbMetaData[14 + 7] & 3);
+			return 0;
+		}
 	}
 
 	memcpy( buffer, stream->codec->extradata, stream->codec->extradata_size );
