@@ -1,4 +1,4 @@
-ifeq ($(TARGET_ARCH),arm64)
+ifeq ($(TARGET_ARCH),arm)
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
@@ -6,7 +6,8 @@ include $(CLEAR_VARS)
 
 SLSIAP_INCLUDE := $(TOP)/hardware/samsung_slsi/slsiap/include
 LINUX_INCLUDE  := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library/include
-LINUX_LIBRARY  := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library
+
+RATECONTROL_PATH := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library/lib/ratecontrol
 
 LOCAL_SHARED_LIBRARIES :=	\
 	liblog \
@@ -22,15 +23,18 @@ LOCAL_C_INCLUDES := system/core/include/ion \
 					$(LINUX_INCLUDE)
 
 LOCAL_CFLAGS :=
-LOCAL_SRC_FILES :=
-LOCAL_LDFLAGS +=
+
+LOCAL_SRC_FILES := \
+	parser_vld.c \
+	nx_video_api.c
+
+LOCAL_LDFLAGS += \
+	-L$(RATECONTROL_PATH)	\
+	-lnxvidrc_android
 
 LOCAL_MODULE := libnx_vpu
 
 LOCAL_MODULE_TAGS := optional
-
-include $(LOCAL_PATH)/build.arm.mk
-include $(LOCAL_PATH)/build.arm64.mk
 
 include $(BUILD_SHARED_LIBRARY)
 
