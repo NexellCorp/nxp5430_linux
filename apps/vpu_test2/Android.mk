@@ -20,6 +20,7 @@ LOCAL_SRC_FILES:= \
 LOCAL_C_INCLUDES += \
 	frameworks/native/include		\
 	system/core/include				\
+	system/core/include/ion		\
 	hardware/libhardware/include	\
 	hardware/samsung_slsi/slsiap/include	\
 	linux/platform/$(TARGET_CPU_VARIANT2)/library/include	\
@@ -32,14 +33,21 @@ LOCAL_SHARED_LIBRARIES := \
 	libutils		\
 	libgui			\
 	libui			\
-	libui			\
 	libion			\
 	libion-nexell	\
-	libnx_vpu
+	libnx_vpu	\
+	libnx_deinterlace	\
+	libnxgraphictools	\
+	libv4l2-nexell
+
+LOCAL_STATIC_LIBRARIES := \
+	libnx_dsp \
+	libnxmalloc
 
 LOCAL_LDFLAGS += \
 	-Llinux/platform/$(TARGET_CPU_VARIANT2)/library/lib	\
 	-L$(LOCAL_PATH)/ffmpeg/libs	\
+	-Lhardware/samsung_slsi/slsiap/omx/codec/ffmpeg/libs \
 	-lavutil-2.1.4 		\
 	-lavcodec-2.1.4 	\
 	-lavformat-2.1.4	\
