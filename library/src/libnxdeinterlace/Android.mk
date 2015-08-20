@@ -15,14 +15,20 @@ LOCAL_C_INCLUDES :=	\
 	$(SLSIAP_INCLUDE)		\
 	$(LINUX_INCLUDE)
 
-LOCAL_CFLAGS += -DCAN_COMPILE_ARM -D__ARM_NEON__
-
 LOCAL_SRC_FILES := \
 	merge.c \
-	merge_arm.s \
 	algo_basic.c \
 	algo_x.c \
 	nx_deinterlace.c
+
+ifeq ($(TARGET_ARCH),arm64)
+LOCAL_CFLAGS += -DARM64=1
+else
+LOCAL_SRC_FILES += \
+	merge_arm.s
+LOCAL_CFLAGS += -DCAN_COMPILE_ARM -D__ARM_NEON__
+LOCAL_CFLAGS += -DARM64=0
+endif
 
 LOCAL_LDFLAGS +=
 
