@@ -388,7 +388,9 @@ enum {
 
 	CODEC_STD_THO	= 9,
 	CODEC_STD_VP3	= 10,
-	CODEC_STD_VP8	= 11
+	CODEC_STD_VP8	= 11,
+
+	CODEC_STD_HEVC  = 12
 };
 
 //	Search Range

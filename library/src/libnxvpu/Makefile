@@ -8,10 +8,12 @@ INC_INSTALL	:= 	../../include
 ######################################################################
 # Build options
 INCLUDE += -I./ -I../../include -I$(KERNDIR)/include
+#INCLUDE	+= -I../libhevc/common -I../libhevc/decoder
 
 LIBRARY += -L../../lib/ -L../../lib/ratecontrol/
 LIBRARY += -lnxvmem
 LIBRARY += -lnxvidrc
+#LIBRARY += -lhevcdec
 
 ######################################################################
 # Target
@@ -19,7 +21,8 @@ COBJS  	:=
 COBJS  	+= parser_vld.o nx_video_api.o
 CPPOBJS	:=  
 
-CFLAGS	+= -g
+#CFLAGS	+= -DHEVC_DEC 
+CFLAGS	+= -fPIC
 
 LIBNAME	:= libnxvpu
 TARGET  := libnxvpu.so

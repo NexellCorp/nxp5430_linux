@@ -36,6 +36,8 @@ typedef struct CODEC_APP_DATA {
 	int32_t dspY;				//	Display Y Axis Offset
 	int32_t	dspWidth;			//	Display Width
 	int32_t dspHeight;			//	Dispplay Height
+
+	int32_t deinterlaceMode;
 } CODEC_APP_DATA;
 
 #endif // __UTIL_h__

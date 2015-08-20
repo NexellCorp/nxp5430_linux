@@ -25,7 +25,7 @@ static int32_t ConvertPrivateHandleVideoMemory( struct private_handle_t const *h
 	memInfo->cbStride  =
 	memInfo->crStride  = handle->stride >> 1;;
 
-	memInfo->luVirAddr = (unsigned int)mmap(NULL, handle->width * handle->height, PROT_READ|PROT_WRITE, MAP_SHARED, handle->share_fd, 0);
+	memInfo->luVirAddr = (unsigned int)mmap(NULL, handle->stride * vstride * 3 / 2, PROT_READ|PROT_WRITE, MAP_SHARED, handle->share_fd, 0);
 	memInfo->cbVirAddr = memInfo->luVirAddr + handle->stride * vstride;
 	memInfo->crVirAddr = memInfo->cbVirAddr + ALIGN(handle->stride>>1,16) * ALIGN(vstride>>1,16);
 
