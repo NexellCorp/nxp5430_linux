@@ -1,6 +1,8 @@
 #ifndef __NX_ALLOC_MEM_H__
 #define __NX_ALLOC_MEM_H__
 
+#include <inttypes.h>
+
 #ifdef	__cplusplus
 extern "C" {
 #endif

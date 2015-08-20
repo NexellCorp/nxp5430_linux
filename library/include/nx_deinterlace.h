@@ -6,8 +6,13 @@
 #ifndef __NX_DEINTERLACER_H__
 #define __NX_DEINTERLACER_H__
 
+#ifdef ARM64
+#if ARM64
+#include <nx_alloc_mem_64.h>
+#endif
+#else
 #include <nx_alloc_mem.h>
-
+#endif
 
 typedef enum {
 	NON_DEINTERLACER		= 0,
