@@ -5,7 +5,7 @@
 #if ARM64
 #include <nx_alloc_mem_64.h>
 #else
-#include <nx_alloc_memi.h>
+#include <nx_alloc_mem.h>
 #endif
 #else
 #include <nx_alloc_mem.h>
