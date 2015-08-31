@@ -1090,10 +1090,7 @@ VID_ERROR_E NX_VidDecParseVideoCfg(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeq
 		hDec->seqDataSize = ( pstSeqIn->seqSize < 2048 ) ? ( pstSeqIn->seqSize ) : ( 2048 );
 		memcpy (hDec->pSeqData, pstSeqIn->seqInfo, hDec->seqDataSize);
 
-		//ret = NX_HevcDecParseVideoCfg( hDec, pstSeqIn, pstSeqOut );
-
-		pstSeqOut->width = pstSeqIn->width;
-		pstSeqOut->height = pstSeqIn->height;
+		ret = NX_HevcDecParseVideoCfg( hDec, pstSeqIn, pstSeqOut );
 	}
 #endif
 
@@ -2793,8 +2790,8 @@ static VID_ERROR_E NX_HevcDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN 
 
 	pstDecOut->width = s_video_decode_op.u4_pic_wd;
 	pstDecOut->height = s_video_decode_op.u4_pic_ht;
-	pstDecOut->strmReadPos  = pstDecIn->strmBuf;
-	pstDecOut->strmWritePos = pstDecOut->strmReadPos + s_video_decode_op.u4_num_bytes_consumed;
+	pstDecOut->strmReadPos  = s_video_decode_op.u4_num_bytes_consumed;
+	pstDecOut->strmWritePos = pstDecIn->strmSize;
 	pstDecOut->isInterlace = !s_video_decode_op.u4_progressive_frame_flag;
 	//pstDecOut->topFieldFirst = s_video_decode_op.e4_fld_type;
 	pstDecOut->timeStamp[DECODED_FRAME] = (uint64_t)s_video_decode_op.u4_ts;
@@ -2825,6 +2822,11 @@ static VID_ERROR_E NX_HevcDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN 
 
 	//pstDecOut->outImg.fourCC = s_video_decode_op.e_output_format;
 
+	//pstDecOut->outImgIdx;
+	//pstDecOut->outDecIdx;
+	//pstDecOut->timeStamp[NONE_FIELD];
+	//pstDecOut->outFrmReliable_0_100[DISPLAY_FRAME];
+
 	if ( s_video_decode_op.u4_frame_decoded_flag == 0 )
 	{
 		pstDecOut->outDecIdx = -1;			// Decode Index
@@ -2832,6 +2834,7 @@ static VID_ERROR_E NX_HevcDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN 
 	}
 	else
 	{
+		pstDecOut->outFrmReliable_0_100[DECODED_FRAME] = 100;
 	}
 
 	return VID_ERR_NONE;

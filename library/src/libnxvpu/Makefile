@@ -21,8 +21,10 @@ COBJS  	:=
 COBJS  	+= parser_vld.o nx_video_api.o
 CPPOBJS	:=  
 
-#CFLAGS	+= -DHEVC_DEC 
+#CFLAGS	+= -DHEVC_DEC
 CFLAGS	+= -fPIC
+
+LDFLAGS := -Wl,-Bsymbolic
 
 LIBNAME	:= libnxvpu
 TARGET  := libnxvpu.so

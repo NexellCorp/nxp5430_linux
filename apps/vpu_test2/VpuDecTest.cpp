@@ -156,6 +156,8 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			seqIn.seqSize = seqSize + size;
 			seqIn.enableUserData = 0;
 			seqIn.disableOutReorder = 0;
+			seqIn.width = imgWidth;			// optional
+			seqIn.height = imgHeight;
 #if defined (ANDROID) && !defined (DEINTERLACE_ENABLE)
 			//	Use External Video Memory
 			seqIn.numBuffers = NUMBER_OF_BUFFER;
@@ -253,8 +255,9 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 
 			bInit = 1;
 			seqSize = 0;
-			size = 0;
 
+			if( vpuCodecType != NX_HEVC_DEC )
+				size = 0;
 			if ( (vpuCodecType == NX_VC1_DEC) && (streamBuffer[0] == 0) && (streamBuffer[1] == 0) && (streamBuffer[2] == 1) )
 				continue;
 		}
