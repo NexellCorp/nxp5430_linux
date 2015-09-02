@@ -16,6 +16,7 @@ DIR += libnxvpu
 DIR += libcec
 
 # Etc Libraries
+DIR += libnxuevent
 
 ######################################################################
 # Build
