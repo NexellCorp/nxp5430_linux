@@ -10,7 +10,7 @@ INC_INSTALL	:= 	../../include
 INCLUDE += -I./ -I../../include -I$(KERNDIR)/include
 #INCLUDE	+= -I../libhevc/common -I../libhevc/decoder
 
-LIBRARY += -L../../lib/ -L../../lib/ratecontrol/
+LIBRARY += -L../../lib/
 LIBRARY += -lnxvmem
 LIBRARY += -lnxvidrc
 #LIBRARY += -lhevcdec

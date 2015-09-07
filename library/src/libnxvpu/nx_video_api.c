@@ -1226,6 +1226,15 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 		if ( (hDec->codecStd == CODEC_STD_MPEG4) && (hDec->vopTimeBits > 0) && (decArg.strmDataSize > 0) )
 			Mp4DecParserFrameHeader( hDec, &decArg );
 
+		if ( (hDec->codecStd == CODEC_STD_AVC) && (pstDecIn->strmSize > 8) )
+		{
+			unsigned char *pbyTmp = decArg.strmData;
+			if ( (pbyTmp[2] == 0) && ((pbyTmp[4]&0x1F) == 7) && (pbyTmp[7] > 51) )
+				pbyTmp[7] = 51;
+			else if ( (pbyTmp[2] == 1) && ((pbyTmp[3]&0x1F) == 7) && (pbyTmp[6] > 51) )
+				pbyTmp[6] = 51;
+		}
+
 #if 0
 		if ( pstDecIn->strmSize > 0 )
 		{
