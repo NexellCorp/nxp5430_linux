@@ -45,6 +45,7 @@
 #define	DBG_CLOCK		0
 #define DBG_USERDATA	0
 #define DBG_REGISTER    0
+#define DBG_ES_ADDR		0
 
 
 #include "nx_vpu_gdi.h"
@@ -2013,7 +2014,7 @@ static int FillBuffer(NX_VPU_INST_HANDLE handle, unsigned char *stream, int size
 
 NX_VPU_RET	NX_VpuDecSetSeqInfo( NX_VPU_INST_HANDLE handle, VPU_DEC_SEQ_INIT_ARG *seqArg )
 {
-//	VpuDecInfo *pInfo = &handle->codecInfo.decInfo;
+	VpuDecInfo *pInfo = &handle->codecInfo.decInfo;
 	NX_VPU_RET ret;
 
 	FUNCIN();
@@ -2048,6 +2049,8 @@ NX_VPU_RET	NX_VpuDecSetSeqInfo( NX_VPU_INST_HANDLE handle, VPU_DEC_SEQ_INIT_ARG 
 	ret = VPU_DecSeqInitCommand( handle, seqArg );
 	if( VPU_RET_OK != ret )
 		return ret;
+
+	NX_DbgMsg( DBG_ES_ADDR, ("[Init]Start = %x, [In]Rd = %x, Wr = %x [Out]Rd = %x, Wr = %x\n", pInfo->strmBufPhyAddr, pInfo->readPos, pInfo->writePos, VpuReadReg(BIT_RD_PTR), VpuReadReg(BIT_WR_PTR)) );
 
 	FUNCOUT();
 	return VPU_DecSeqComplete( handle, seqArg);
@@ -2096,6 +2099,8 @@ NX_VPU_RET	NX_VpuDecRunFrame( NX_VPU_INST_HANDLE handle, VPU_DEC_DEC_FRAME_ARG *
 	ret = VPU_DecStartOneFrameCommand(handle, decArg);
 	if( ret != VPU_RET_OK )
 		return ret;
+
+	NX_DbgMsg( DBG_ES_ADDR, ("Start = %x, [In]Rd = %x, Wr = %x [Out]Rd = %x, Wr = %x\n", pInfo->strmBufPhyAddr, pInfo->readPos, pInfo->writePos, VpuReadReg(BIT_RD_PTR), VpuReadReg(BIT_WR_PTR)) );
 
 	return VPU_DecGetOutputInfo( handle, decArg );
 }

@@ -27,6 +27,7 @@ void print_usage( const char *appName )
 		"     -i [input file name]       [M]   : input media file name (When is camera encoder, the value set NULL\n"
 		"     -o [output file name]      [O]   : output file name\n"
 		"     -d [x],[y],[width][height] [O]   : input image's resolution(encoder file mode)\n"
+		"     -t [deinterlace mode]		 [o]   : deinterlace mode (1:Discard, 2:Mean, 3:Blend, 4:bob, 5:linear, 10:3D, 20:HW\n"
 		"     -h : help\n"
 		" -------------------------------------------------------------------------------------------------------------------\n"
 		"  only encoder options :\n"
@@ -68,7 +69,7 @@ int32_t main( int32_t argc, char *argv[] )
 	appData.dspWidth = 1024;
 	appData.dspHeight = 600;
 
-	while( -1 != (opt=getopt(argc, argv, "m:i:o:d:hr:c:s:f:b:g:q:v:x:l:a:")))
+	while( -1 != (opt=getopt(argc, argv, "m:i:o:d:hr:c:s:f:b:g:q:v:x:l:a:t:")))
 	{
 		switch( opt ){
 			case 'm':
@@ -101,6 +102,7 @@ int32_t main( int32_t argc, char *argv[] )
 			case 'x':	appData.maxQp = atoi(optarg );  break;
 			case 'l':	appData.RCAlgorithm  = atoi(optarg );  break;
 			case 'a':	appData.angle = atoi( optarg );  break;		//	JPEG Rotae Angle(0,90,180,270)
+			case 't':	appData.deinterlaceMode = atoi( optarg );  break;
 			default:	break;
 		}
 	}
@@ -110,10 +112,7 @@ int32_t main( int32_t argc, char *argv[] )
 		case DECODER_MODE:
 			return VpuDecMain( &appData );
 		case ENCODER_MODE:
-		 	if ( (appData.codec != 3) || (appData.inFileName) )
-		  		return VpuEncMain( &appData );
-		 	//else
-		  	//	return VpuJpgMain( &appData );
+		  	return VpuEncMain( &appData );
 	}
 
 	return 0;

@@ -124,13 +124,14 @@ const CodStdTab codstd_tab[] = {
     { NX_RV_DEC,	0, CODEC_ID_RV30,		MKTAG('R', 'V', '3', '0') },
     { NX_RV_DEC,	0, CODEC_ID_RV40,		MKTAG('R', 'V', '4', '0') },
     { NX_THEORA_DEC,0, CODEC_ID_THEORA,     MKTAG('T', 'H', 'E', 'O') },
-    { NX_VP8_DEC,   0, CODEC_ID_VP8,        MKTAG('V', 'P', '8', '0') }
+    { NX_VP8_DEC,   0, CODEC_ID_VP8,        MKTAG('V', 'P', '8', '0') },
 #if 0
 	{ STD_AVS,		0, CODEC_ID_CAVS,		MKTAG('C','A','V','S') },
 	{ STD_AVS,		0, CODEC_ID_AVS,		MKTAG('A','V','S','2') },
     { STD_VP3,		0, CODEC_ID_VP3,		MKTAG('V', 'P', '3', '0') },
     { STD_VP3,		0, CODEC_ID_VP3,		MKTAG('V', 'P', '3', '1') },
 #endif
+    { NX_JPEG_DEC,  0, CODEC_ID_MJPEG,      MKTAG('M', 'J', 'P', 'G') }
 };
 
 int fourCCToMp4Class(unsigned int fourcc)
@@ -283,9 +284,17 @@ VID_TYPE_E CodecIdToVpuType( int codecId, unsigned int fourcc )
 	{
 		vpuCodecType = NX_VP8_DEC;
 	}
+	else if( codecId == CODEC_ID_MJPEG )
+	{
+		vpuCodecType = NX_JPEG_DEC;
+	}
+	else if( codecId == AV_CODEC_ID_HEVC )
+	{
+		vpuCodecType = NX_HEVC_DEC;
+	}
 	else
 	{
-		printf("Cannot support codecid(%d)\n", codecId);
+		printf("Cannot support codecid(%d) (0x %x) \n", codecId, codecId );
 		exit(-1);
 	}
 	return (VID_TYPE_E)vpuCodecType;

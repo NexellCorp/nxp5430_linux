@@ -1,3 +1,4 @@
+ifeq ($(TARGET_ARCH),arm)
 ifeq ($(TARGET_CPU_VARIANT2),s5p6818)
 
 LOCAL_PATH := $(call my-dir)
@@ -32,4 +33,5 @@ LOCAL_MODULE_TAGS := optional
 
 include $(BUILD_STATIC_LIBRARY)
 
+endif
 endif

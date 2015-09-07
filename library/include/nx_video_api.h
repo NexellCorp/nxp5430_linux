@@ -30,6 +30,7 @@ typedef enum {
 	NX_THEORA_DEC   = 0x07,         // Theora
 	NX_VP8_DEC      = 0x08,         // VP8
 	NX_JPEG_DEC     = 0x09,         // JPEG
+	NX_HEVC_DEC		= 0x0A,			// H.265( HEVC )
 
 	//  Encoders
 	NX_AVC_ENC      = 0x10,

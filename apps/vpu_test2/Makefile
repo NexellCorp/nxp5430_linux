@@ -6,10 +6,17 @@ include ../../build.env
 # Build options
 INCLUDE += -I./
 INCLUDE += -I../../library/include -I../../library/include/theoraparser
-LIBRARY	+= -L../../library/lib -L../../library/lib/ratecontrol 
-LIBRARY += -lnxvpu -lnxdsp -lnxvip -lnxv4l2 -lnxvmem -lnxvidrc
+INCLUDE += -I./ffmpeg/include/
+
+LIBRARY	+= -L../../library/lib -L../../library/lib/ratecontrol
+LIBRARY += -lnxvpu -lnxdsp -lnxvip -lnxv4l2 -lnxvmem -lnxvidrc -lnxdeinterlace -lnxgraphictools
+#LIBRARY += -lnxvpu -lnxdsp -lnxvip -lnxv4l2 -lnxvmem -lnxvidrc -lhevcdec -lnxdeinterlace -lnxgraphictools
 LIBRARY += -ltheoraparser
-LIBRARY	+= -lavcodec -lavformat -lstdc++ -lm
+LIBRARY	+= -lstdc++ -lm
+
+LIBRARY	+= -L./ffmpeg/libs -lavcodec -lavformat -lavutil
+LIBRARY += -I../../library/src/libnxgraphictools/libs
+LIBRARY += -lEGL -lGLESv1_CM -lGLESv2 -lVR
 
 ######################################################################
 # Target
@@ -24,7 +31,7 @@ CPPOBJS	:= \
 	VpuJpgTest.o		\
 	main.o
 
-CFLAGS	+= -g
+CFLAGS	+= -g -pthread 
 
 TARGET:= codec_tests
 
@@ -37,7 +44,7 @@ all:	\
 	$(TARGET)
 
 $(TARGET):	depend $(OBJS)
-	$(CC) $(CPPFLAGS) $(OBJS) -o $@ $(LIBRARY)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -o $@ $(LIBRARY)
 
 clean:
 	rm -f $(OBJS) $(TARGET) .depend

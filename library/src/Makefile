@@ -11,11 +11,13 @@ DIR += libion
 DIR += libnxmalloc
 DIR += libnxv4l2
 DIR += libnxvpu
+DIR += libnxscaler
 
 # I/O Wrapper
 DIR += libcec
 
 # Etc Libraries
+DIR += libnxuevent
 
 ######################################################################
 # Build
