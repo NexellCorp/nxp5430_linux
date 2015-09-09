@@ -254,7 +254,7 @@ int V4l2NexellPrivate::getCameraInfo()
     char sysfsEntry[128];
     strcpy(sysfsEntry, "/sys/devices/platform/camera sensor/sensor.0");
     NexellCameraInfo *info;
-    char buf[4096] = {0, };
+    char buf[512] = {0, };
     int ret;
     char *c;
     int sysfsFd;
@@ -267,7 +267,7 @@ int V4l2NexellPrivate::getCameraInfo()
             ALOGE("%s: can't open sysfs entry!!!", __func__);
             info->SensorEntityName[0] = 0;
         } else {
-            buf[0] = '0';
+			memset(buf, 0, sizeof(buf));
             ret  = read(sysfsFd, buf, sizeof(buf));
             if (ret < 0) {
                 ALOGE("error read sysfs entry");
