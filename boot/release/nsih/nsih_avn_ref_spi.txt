@@ -43,13 +43,13 @@ FFFF021C	// 0x03C : SRAMBASE + Header
 //------------------------------------------------------------------------------
 // Main Bootloader Load Info
 //------------------------------------------------------------------------------
-00008000	// 0x040 : Device Read Address from 2ndboot Device.
+00010000	// 0x040 : Device Read Address from 2ndboot Device.
 00040000	// 0x044 : Load Size for 2ndboot.
 FFFF0000	// 0x048 : Load Address for 2ndboot.
 FFFF0000	// 0x04C : Launch Address for 2ndboot.
 
-00000002	// 0x050	[7:0] - Channel number
-03000000	// 0x054	Boot From SDMMC	[31:24] - 0: USB, 1: SPI, 2: NAND, 3:SDMMC, 4: SDFS
+00000003	// 0x050	[31:24] - Channel number, [23:0] - AddrStep
+01000000	// 0x054	Boot From SPI	[31:24] - 0: USB, 1: SPI, 2: NAND, 3:SDMMC, 4: SDFS
 00000000	// 0x058
 
 //------------------------------------------------------------------------------
@@ -77,8 +77,8 @@ FFFF0000	// 0x04C : Launch Address for 2ndboot.
 // MCU-D registers
 //------------------------------------------------------------------------------
 // Mem Controller Configuration
-03100301	// 0x098	/Chip Num:1	/Chip Row:15	/Bus Width:16	/Chip Col:10
-004007C0	// 0x09C	512MB x 2ea (16bit) x 1CS
+03080401	// 0x098	/Chip Num:1	/Chip Row:16	/Bus Width:8	/Chip Col:10
+00800780	// 0x09C	512MB x 4ea (8bit) x 1CS
 06000B08	// 0x0A0	/CWL:8	/CL:11	/MR1_AL:0	/MR0_WR:6
 
 // DDR PHY delay timing Configuration
@@ -90,7 +90,7 @@ FFFF0000	// 0x04C : Launch Address for 2ndboot.
 00620618	// 0x0B0	/Refresh Interval:7.8us
 6836650E	// 0x0B4	/tRFC:104	/tRRD:3	/tRP:6	/tRCD:6	/tRC:20	/tRAS:14
 3630580B	// 0x0B8	/tWTR:3	/tWR:6	/tRTP:3
-41000A26	// 0x0BC	/tFAW:16	/tXSR:256	/tXP:10	/tCKE:2
+31000A26	// 0x0BC	/tFAW:12	/tXSR:256	/tXP:10	/tCKE:2
 
 // DDR3 device - Drive strength value.
 00020102	// 0x0C0	[23:16] MR1_RTT_Nom - 001: RZQ/4, 010: RZQ/2, 011: RZQ/6, 100: RZQ/12, 101: RZQ/8, [15:0] MR1_ODS - 0: RZQ/6, 1 : RZQ/7, [7:0] MR2_RTT_WR - 0: ODT disable, 1: RZQ/4, 2: RZQ/2
