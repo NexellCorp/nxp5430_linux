@@ -11,7 +11,7 @@ echo "$SECBOOT_NAME"
 
 cp ../../temporary/2ndboot/"$SRC_NAME"_ALL.bin ./"$SRC_NAME"_ALL.bin
 
-#cp ../../temporary/2ndboot/"$SRC_NAME"_SVT_ALL.bin   ./"$DST_NAME1".bin
+cp ../../temporary/2ndboot/"$SRC_NAME"_SVT_ALL.bin   ./"$DST_NAME1".bin
 cp ../../temporary/2ndboot/"$SRC_NAME"_DRONE_ALL.bin ./"$DST_NAME2".bin
-#cp ../../temporary/2ndboot/"$SRC_NAME"_ASB_ALL.bin   ./"$DST_NAME3".bin
+cp ../../temporary/2ndboot/"$SRC_NAME"_ASB_ALL.bin   ./"$DST_NAME3".bin
 cp ../../temporary/2ndboot/"$SRC_NAME"_AVN_ALL.bin   ./"$DST_NAME4".bin
