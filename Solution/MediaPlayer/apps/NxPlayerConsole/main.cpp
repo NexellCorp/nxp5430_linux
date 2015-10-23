@@ -96,21 +96,14 @@ static void signal_handler( int sig )
 		default :					break;
 	}
 
-	if( SIGSEGV == sig ) {
-		tcsetattr( STDIN_FILENO, TCSANOW, &AppData.oldt );
-	}
-	else {
-		tcsetattr( STDIN_FILENO, TCSANOW, &AppData.oldt );
-
-		NX_MPStop( AppData.hPlayer );
-		NX_MPClose( AppData.hPlayer );
+	NX_MPStop( AppData.hPlayer );
+	NX_MPClose( AppData.hPlayer );
 		
-		AppData.bThreadExit = true;
-		if(AppData.iShellMode)		
-		{
-			AppData.pCmdQueue->Deinit();
-			delete AppData.pCmdQueue;
-		}
+	AppData.bThreadExit = true;
+	if(AppData.iShellMode)		
+	{
+		AppData.pCmdQueue->Deinit();
+		delete AppData.pCmdQueue;
 	}
 
 	exit( EXIT_FAILURE );
@@ -318,8 +311,16 @@ static void cbEventCallback( void *privateDesc, unsigned int EventType, unsigned
 		printf("%s(): End of stream. ( privateDesc = 0x%08x )\n", __func__, (int32_t)pAppData );
 		if( pAppData )
 		{
+			NX_MPStop( pAppData->hPlayer );
+			NX_MPClose( pAppData->hPlayer );
+		
 			pAppData->bThreadExit = true;
-			pAppData->pCmdQueue->Deinit();
+			if(pAppData->iShellMode)		
+			{
+				pAppData->pCmdQueue->Deinit();
+				delete pAppData->pCmdQueue;
+			}
+			exit(1);
 		}
 	}
 	else if( EventType == MP_MSG_DEMUX_ERR )
@@ -327,8 +328,16 @@ static void cbEventCallback( void *privateDesc, unsigned int EventType, unsigned
 		printf("%s(): Cannot play contents.\n", __func__);
 		if( pAppData )
 		{
+			NX_MPStop( pAppData->hPlayer );
+			NX_MPClose( pAppData->hPlayer );
+		
 			pAppData->bThreadExit = true;
-			pAppData->pCmdQueue->Deinit();
+			if(pAppData->iShellMode)		
+			{
+				pAppData->pCmdQueue->Deinit();
+				delete pAppData->pCmdQueue;
+			}
+			exit(1);
 		}
 	}
 }
@@ -1289,7 +1298,6 @@ int32_t main( int32_t argc, char *argv[] )
 
 	if( AppData.MediaInfo.iAudioTrackNum > 0 )
 	{
-		NX_MPAddTrack( AppData.hPlayer, AppData.iAudioIndex, NULL, NULL );
 #ifdef DUAL_DISPLAY
 		NX_MPAddTrack( AppData.hPlayer, AppData.iAudioIndex, NULL );
 #else
@@ -1302,12 +1310,12 @@ int32_t main( int32_t argc, char *argv[] )
 
 	AppData.bThreadExit= false;
 	AppData.bPause		= false;
-	
+
 	NX_MPPlay( AppData.hPlayer );
 	NX_MPGetDuration( AppData.hPlayer, &duration );
 	
 	StartHdmiDetect();
-	
+
 	while( !AppData.bThreadExit )
 	{
 		usleep(300000);
