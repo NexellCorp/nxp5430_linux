@@ -112,7 +112,7 @@ int32_t main( int32_t argc, char *argv[] )
 		case DECODER_MODE:
 			return VpuDecMain( &appData );
 		case ENCODER_MODE:
-		  	return VpuEncMain( &appData );
+			return VpuEncMain( &appData );
 	}
 
 	return 0;

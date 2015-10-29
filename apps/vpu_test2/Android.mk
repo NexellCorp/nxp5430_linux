@@ -12,8 +12,9 @@ LOCAL_SRC_FILES:= \
 	NX_AndroidRenderer.cpp \
 	Util.cpp			\
 	VpuDecTest.cpp		\
-	main.cpp                \
-	VpuEncTest.cpp		
+	VpuEncTest.cpp		\
+	main.cpp            \
+
 #	VpuJpgTest.cpp		\
 #	img_proc_main.cpp	\
 
@@ -36,13 +37,17 @@ LOCAL_SHARED_LIBRARIES := \
 	libion			\
 	libion-nexell	\
 	libnx_vpu	\
-	libnx_deinterlace	\
-	libnxgraphictools	\
 	libv4l2-nexell
 
+#LOCAL_SHARED_LIBRARIES += \
+#	libnx_deinterlace	\
+#	libnxgraphictools
+
 LOCAL_STATIC_LIBRARIES := \
-	libnx_dsp \
 	libnxmalloc
+
+#LOCAL_STATIC_LIBRARIES += \
+#	libnx_dsp \
 
 LOCAL_LDFLAGS += \
 	-Llinux/platform/$(TARGET_CPU_VARIANT2)/library/lib	\

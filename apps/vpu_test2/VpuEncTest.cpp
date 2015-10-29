@@ -7,7 +7,9 @@
 
 #include <nx_fourcc.h>
 #include <nx_vip.h>			//	VIP
+#ifndef ANDROID
 #include <nx_dsp.h>			//	Display
+#endif
 #include <nx_video_api.h>	//	Video En/Decoder
 
 #include "NX_Queue.h"
@@ -17,6 +19,8 @@
 #define	MAX_ENC_BUFFER			8
 #define	ENABLE_NV12				1
 #define VIP_PORT				0		// s5p4418 = 0
+
+#define	ENABLE_DISPLAY			0
 
 //#define TEST_CHG_PARA
 
@@ -182,7 +186,9 @@ static int32_t VpuCamEncMain( CODEC_APP_DATA *pAppData )
 	int seqSize = 0;
 
 	//	Display
+#if (ENABLE_DISPLAY)
 	DISPLAY_HANDLE hDsp;
+#endif
 	NX_VID_ENC_HANDLE hEnc;
 	uint64_t StrmTotalSize = 0;
 
@@ -306,6 +312,7 @@ static int32_t VpuCamEncMain( CODEC_APP_DATA *pAppData )
 		VIP_INFO vipInfo;
 
 #ifndef ANDROID
+#if (ENABLE_DISPLAY)
 		DISPLAY_INFO dspInfo;
 		memset( &dspInfo, 0, sizeof(dspInfo) );
 		// Initailize Display
@@ -326,6 +333,7 @@ static int32_t VpuCamEncMain( CODEC_APP_DATA *pAppData )
 		dspInfo.dspDstRect.bottom = cropH;
 		hDsp = NX_DspInit( &dspInfo );
 		NX_DspVideoSetPriority(dspInfo.module, 0);
+#endif
 #endif
 
 		memset( &vipInfo, 0, sizeof(vipInfo) );
@@ -372,11 +380,14 @@ static int32_t VpuCamEncMain( CODEC_APP_DATA *pAppData )
 			//NX_VipQueueBuffer( hVip, pTmpMem );
 
 			//NX_VipDequeueBuffer( hVip, &pCurCapturedBuf, &vipTimeStamp );
+#if (ENABLE_DISPLAY)
 			NX_DspQueueBuffer( hDsp, pCurCapturedBuf );
-
+#endif
 			if( pPrevDsp )
 			{
+#if (ENABLE_DISPLAY)
 				NX_DspDequeueBuffer( hDsp );
+#endif
 
 #if ENABLE_NV12
 				if( pNV12Mem )
@@ -501,7 +512,9 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 	uint8_t *seqBuffer = (uint8_t *)malloc( MAX_SEQ_BUF_SIZE );  // SPS/PPS or JPEG Header
 	int32_t seqSize = 0;
 
+#if (ENABLE_DISPLAY)
 	DISPLAY_HANDLE hDsp;                       // Display Handle
+#endif
 	NX_VID_ENC_HANDLE hEnc;                    // Encoder Handle
 	uint64_t StrmTotalSize = 0;
 	float    PSNRSum = 0;
@@ -530,6 +543,7 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 	{
 		NX_VID_ENC_INIT_PARAM encInitParam;									// Encoder Parameters
 #ifndef ANDROID
+#if (ENABLE_DISPLAY)
 		DISPLAY_INFO dspInfo;
 		memset( &dspInfo, 0, sizeof(dspInfo) );
 
@@ -551,6 +565,7 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 		dspInfo.dspDstRect.bottom = pAppData->dspY + pAppData->dspHeight;
 		hDsp = NX_DspInit( &dspInfo );
 		NX_DspVideoSetPriority(dspInfo.module, 0);
+#endif
 #endif
 
 		// Initialize Encoder
@@ -696,6 +711,7 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 			totalTime += (endTime-startTime);
 
 #ifndef ANDROID
+#if (ENABLE_DISPLAY)
 			// Display Image
 			NX_DspQueueBuffer( hDsp, encIn.pImage );
 
@@ -703,6 +719,7 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 			{
 				NX_DspDequeueBuffer( hDsp );
 			}
+#endif
 			pPrevDsp = encIn.pImage;
 #endif
 
@@ -799,7 +816,9 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 	}
 
 #ifndef ANDROID
+#if (ENABLE_DISPLAY)
 	NX_DspClose( hDsp );
+#endif
 #endif
 
 	return 0;
