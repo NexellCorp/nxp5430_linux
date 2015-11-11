@@ -38,6 +38,8 @@ enum {
 enum {
 	DISPLAY_MODULE_MLC0			= 0x00,
 	DISPLAY_MODULE_MLC1			= 0x01,
+	DISPLAY_MODULE_MLC0_RGB		= 0x02,
+	DISPLAY_MODULE_MLC1_RGB		= 0x03,
 };
 
 typedef struct DSP_IMG_RECT {
@@ -72,6 +74,7 @@ void			NX_DspClose					( DISPLAY_HANDLE hDisplay );
 int32_t			NX_DspStreamControl			( DISPLAY_HANDLE hDisplay, int32_t bEnable );	
 
 int32_t			NX_DspQueueBuffer			( DISPLAY_HANDLE hDisplay, NX_VID_MEMORY_INFO *pVidBuf );
+int32_t			NX_DspRgbQueueBuffer		( DISPLAY_HANDLE hDisplay, NX_MEMORY_INFO *pMemInfo );
 int32_t			NX_DspDequeueBuffer			( DISPLAY_HANDLE hDisplay );
 
 int32_t			NX_DspVideoSetSourceFormat 	( DISPLAY_HANDLE hDisplay, int32_t width, int32_t height, int32_t stride, int32_t fourcc );

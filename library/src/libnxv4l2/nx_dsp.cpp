@@ -78,6 +78,8 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 	if( pDspInfo->module == DISPLAY_MODULE_MLC0 ) {
 		s.useMlc0Video	= true;
 		s.useMlc1Video	= false;
+		s.useMlc0Rgb	= false;
+		s.useMlc1Rgb	= false;
 		
 		mlcId	= nxp_v4l2_mlc0_video;
 		mlcPin	= nxp_v4l2_mlc0;
@@ -85,17 +87,36 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 	else if( pDspInfo->module == DISPLAY_MODULE_MLC1 ) {
 		s.useMlc0Video	= false;
 		s.useMlc1Video	= true;
+		s.useMlc0Rgb	= false;
+		s.useMlc1Rgb	= false;
 
 		mlcId	= nxp_v4l2_mlc1_video;
+		mlcPin	= nxp_v4l2_mlc1;
+	}
+	else if( pDspInfo->module == DISPLAY_MODULE_MLC0_RGB ) {
+		s.useMlc0Video	= false;
+		s.useMlc1Video	= false;
+		s.useMlc0Rgb	= true;
+		s.useMlc1Rgb	= false;
+
+		mlcId	= nxp_v4l2_mlc0_rgb;
+		mlcPin	= nxp_v4l2_mlc0;
+	}
+	else if( pDspInfo->module == DISPLAY_MODULE_MLC1_RGB ) {
+		s.useMlc0Video	= false;
+		s.useMlc1Video	= false;
+		s.useMlc0Rgb	= false;
+		s.useMlc1Rgb	= true;
+
+		mlcId	= nxp_v4l2_mlc1_rgb;
 		mlcPin	= nxp_v4l2_mlc1;
 	}
 	else {
 		return NULL;
 	}
 
-
 	if( NULL == (hPrivate = v4l2_init(&s)) ) {
-		printf("%s(): v4l2_init() failed.\n", __func__);
+		printf("%s(): v4l2_init() failed.\n", __FUNCTION__);
 		return NULL;
 	}
 
@@ -103,13 +124,13 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 	if( pDspInfo->port == DISPLAY_PORT_HDMI ) {
 		result = v4l2_link(hPrivate, mlcPin, nxp_v4l2_hdmi);
 		if( result < 0 ) {
-			printf("%s(): v4l2_link() failed.\n", __func__);
+			printf("%s(): v4l2_link() failed.\n", __FUNCTION__);
 			return NULL;
 		}
 #if 1
 		result = v4l2_set_preset( hPrivate, nxp_v4l2_hdmi, V4L2_DV_1080P60 );
 		if( result < 0 ) {
-			printf("%s(): v4l2_set_preset() failed!\n", __func__);
+			printf("%s(): v4l2_set_preset() failed!\n", __FUNCTION__);
 		}
 #endif
 	}
@@ -118,20 +139,25 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 	{
 		result = v4l2_link(hPrivate, mlcPin, nxp_v4l2_tvout);
 		if( result < 0 ) {
-			printf("%s(): v4l2_link() failed.\n", __func__);
+			printf("%s(): v4l2_link() failed.\n", __FUNCTION__);
 			return NULL;
 		}
 	}
 
 	// check display plane and set format.
-	if( pDspInfo->numPlane == 1 ) {
-		result = v4l2_set_format( hPrivate, mlcId, pDspInfo->width, pDspInfo->height, PIXFORMAT_YUV420_YV12 );
+	if( pDspInfo->module == DISPLAY_MODULE_MLC0 ||  pDspInfo->module == DISPLAY_MODULE_MLC1 ) {
+		if( pDspInfo->numPlane == 1 ) {
+			result = v4l2_set_format( hPrivate, mlcId, pDspInfo->width, pDspInfo->height, PIXFORMAT_YUV420_YV12 );
+		}
+		else {
+			result = v4l2_set_format( hPrivate, mlcId, pDspInfo->width, pDspInfo->height, V4L2_PIX_FMT_YUV420M );
+		}
 	}
 	else {
-		result = v4l2_set_format( hPrivate, mlcId, pDspInfo->width, pDspInfo->height, V4L2_PIX_FMT_YUV420M );
+		result = v4l2_set_format( hPrivate, mlcId, pDspInfo->width, pDspInfo->height, V4L2_PIX_FMT_RGB32 );
 	}
 	if( result < 0 ) {
-		printf("%s(): v4l2_set_format() failed!\n", __func__);
+		printf("%s(): v4l2_set_format() failed!\n", __FUNCTION__);
 		return NULL;
 	}
 
@@ -143,7 +169,7 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 		pDspInfo->dspSrcRect.right-pDspInfo->dspSrcRect.left,
 		pDspInfo->dspSrcRect.bottom-pDspInfo->dspSrcRect.top);
 	if( result < 0 ) {
-		printf("%s(): v4l2_set_crop() failed!\n", __func__);
+		printf("%s(): v4l2_set_crop() failed!\n", __FUNCTION__);
 		return NULL;
 	}
 
@@ -155,14 +181,14 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 		pDspInfo->dspDstRect.right-pDspInfo->dspDstRect.left ,
 		pDspInfo->dspDstRect.bottom-pDspInfo->dspDstRect.top);
 	if( result < 0 ) {
-		printf("%s(): v4l2_set_crop() failed!\n", __func__);
+		printf("%s(): v4l2_set_crop() failed!\n", __FUNCTION__);
 		return NULL;
 	}
 
 	// Request Buffer.
 	result = v4l2_reqbuf(hPrivate, mlcId, DISPLAY_MAX_BUF_SIZE);
 	if( result < 0 ) {
-		printf("%s(): v4l2_reqbuf() failed!\n", __func__);
+		printf("%s(): v4l2_reqbuf() failed!\n", __FUNCTION__);
 		goto ErrorExit;
 	}
 
@@ -217,7 +243,7 @@ int32_t NX_DspQueueBuffer( DISPLAY_HANDLE hDisplay, NX_VID_MEMORY_INFO *pVidBuf 
 
 	if( v4l2_qbuf(hDisplay->hPrivate, hDisplay->mlcId, hDisplay->numPlane, hDisplay->lastQueueIdx, &buf, -1, NULL) < 0 )
 	{
-		printf("%s(): v4l2_qbuf() failed.\n", __func__);
+		printf("%s(): v4l2_qbuf() failed.\n", __FUNCTION__);
 		return -1;
 	}
 
@@ -230,13 +256,39 @@ int32_t NX_DspQueueBuffer( DISPLAY_HANDLE hDisplay, NX_VID_MEMORY_INFO *pVidBuf 
 	return 0;
 }
 
+int32_t NX_DspRgbQueueBuffer( DISPLAY_HANDLE hDisplay, NX_MEMORY_INFO *pMemInfo )
+{
+	int32_t i;
+	struct nxp_vid_buffer buf;
+
+	buf.plane_num 	= 1;
+	buf.fds[0]		= (int)pMemInfo->privateDesc;
+	buf.virt[0]		= (char*)pMemInfo->virAddr;
+	buf.phys[0]		= (unsigned long)pMemInfo->phyAddr;
+	buf.sizes[0]	= pMemInfo->size;
+
+	if( v4l2_qbuf(hDisplay->hPrivate, hDisplay->mlcId, 1, hDisplay->lastQueueIdx, &buf, -1, NULL) < 0 )
+	{
+		printf("%s(): v4l2_qbuf() failed.\n", __FUNCTION__);
+		return -1;
+	}
+
+	hDisplay->lastQueueIdx = (hDisplay->lastQueueIdx + 1) % DISPLAY_MAX_BUF_SIZE;
+	if( !hDisplay->streamOnFlag )
+	{
+		v4l2_streamon( hDisplay->hPrivate, hDisplay->mlcId );
+		hDisplay->streamOnFlag = true;
+	}
+	return 0;	
+}
+
 int32_t NX_DspDequeueBuffer(DISPLAY_HANDLE hDisplay)
 {
 	int32_t idx;
 
 	if( v4l2_dqbuf(hDisplay->hPrivate, hDisplay->mlcId, hDisplay->numPlane, &idx, NULL) < 0 )
 	{
-		printf("%s(): v4l2_dqbuf() failed.\n", __func__);
+		printf("%s(): v4l2_dqbuf() failed.\n", __FUNCTION__);
 		return -1;
 	}
 	return idx;
@@ -244,7 +296,7 @@ int32_t NX_DspDequeueBuffer(DISPLAY_HANDLE hDisplay)
 
 int32_t NX_DspStreamControl( DISPLAY_HANDLE hDisplay, int32_t bEnable )
 {
-	printf("%s(): Not implemetation.\n", __func__);
+	printf("%s(): Not implemetation.\n", __FUNCTION__);
 	return 0;
 
 	if( hDisplay )
@@ -382,7 +434,7 @@ int32_t NX_DspVideoSetPosition( DISPLAY_HANDLE hDisplay, DSP_IMG_RECT *pRect )
 		if( 0 > v4l2_set_crop_with_pad(hDisplay->hPrivate, hDisplay->mlcId, 0, pRect->left, pRect->top, pRect->right-pRect->left, pRect->bottom-pRect->top) )
 		{
 			printf("%s():Line(%d) Error : v4l2_set_crop failed(%p,%d,%d,%d,%d,%d)!!!\n",
-				__func__, __LINE__, hDisplay->hPrivate, hDisplay->mlcId, pRect->left, pRect->top, pRect->right-pRect->left, pRect->bottom-pRect->top );
+				__FUNCTION__, __LINE__, hDisplay->hPrivate, hDisplay->mlcId, pRect->left, pRect->top, pRect->right-pRect->left, pRect->bottom-pRect->top );
 			return -1;
 		}
 
@@ -413,12 +465,12 @@ int32_t NX_DspVideoSetPriority( int32_t module, int32_t priority )
 	}
 
 	if( NULL == (hPrivate = v4l2_init(&s)) ) {
-		printf("%s(): v4l2_init() failed.\n", __func__);
+		printf("%s(): v4l2_init() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 	
 	if( 0 > v4l2_set_ctrl( hPrivate, mlcId, V4L2_CID_MLC_VID_PRIORITY, priority ) ) {
-		printf("%s(): v4l2_set_ctrl() failed.\n", __func__);
+		printf("%s(): v4l2_set_ctrl() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 	
@@ -447,12 +499,12 @@ int32_t NX_DspVideoGetPriority( int32_t module, int32_t *priority )
 	}
 	
 	if( NULL == (hPrivate = v4l2_init(&s)) ) {
-		printf("%s(): v4l2_init() failed.\n", __func__);
+		printf("%s(): v4l2_init() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 	
 	if( 0 > v4l2_get_ctrl( hPrivate, mlcId, V4L2_CID_MLC_VID_PRIORITY, priority ) ) {
-		printf("%s(): v4l2_get_ctrl() failed.\n", __func__);
+		printf("%s(): v4l2_get_ctrl() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 	
@@ -481,12 +533,12 @@ int32_t NX_DspSetColorKey( int32_t module, int32_t colorkey )
 	}
 	
 	if( NULL == (hPrivate = v4l2_init(&s)) ) {
-		printf("%s(): v4l2_init() failed.\n", __func__);
+		printf("%s(): v4l2_init() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 	
 	if( 0 > v4l2_set_ctrl( hPrivate, mlcId, V4L2_CID_MLC_VID_COLORKEY, colorkey ) ) {
-		printf("%s(): v4l2_set_ctrl() failed.\n", __func__);
+		printf("%s(): v4l2_set_ctrl() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 
@@ -515,12 +567,12 @@ int32_t NX_DspGetColorKey( int32_t module, int32_t *colorkey )
 	}
 	
 	if( NULL == (hPrivate = v4l2_init(&s)) ) {
-		printf("%s(): v4l2_init() failed.\n", __func__);
+		printf("%s(): v4l2_init() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 	
 	if( 0 > v4l2_get_ctrl( hPrivate, mlcId, V4L2_CID_MLC_VID_COLORKEY, colorkey ) ) {
-		printf("%s(): v4l2_get_ctrl() failed.\n", __func__);
+		printf("%s(): v4l2_get_ctrl() failed.\n", __FUNCTION__);
 		ret = -1;
 	}
 	
