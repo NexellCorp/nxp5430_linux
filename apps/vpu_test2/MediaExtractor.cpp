@@ -729,6 +729,26 @@ int32_t CMediaReader::ReadStream( int32_t type, uint8_t *buf, int32_t *size, int
 	return -1;
 }
 
+#ifdef ANDROID
+#ifndef LOLLIPOP
+#define INT64_MIN		0x8000000000000000LL
+#define INT64_MAX		0x7fffffffffffffffLL
+#endif
+#endif
+
+int32_t CMediaReader::SeekStream( int64_t seekTime )
+{
+	int32_t seekFlag = AVSEEK_FLAG_FRAME;
+	seekFlag &= ~AVSEEK_FLAG_BYTE;
+
+	int32_t iRet = avformat_seek_file(m_pFormatCtx, -1, INT64_MIN, seekTime*1000, INT64_MAX, seekFlag);
+	if( 0 > iRet ) {
+		printf( "Fail, SeekStream().\n" );
+	}
+
+	return iRet;
+}
+
 int32_t CMediaReader::GetVideoSeqInfo( uint8_t *buf )
 {
 	return GetSequenceInformation( m_VideoStream, buf );

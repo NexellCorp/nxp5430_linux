@@ -42,6 +42,8 @@ public:
 	bool OpenFile(const char *fileName);
 	void CloseFile();
 	int32_t ReadStream( int32_t type, uint8_t *buf, int32_t *size, int32_t *key, int64_t *timeStamp );
+	int32_t SeekStream( int64_t seekTime );
+
 	int32_t GetVideoSeqInfo( uint8_t *buf );
 	int32_t GetAudioSeqInfo( uint8_t *buf );
 
