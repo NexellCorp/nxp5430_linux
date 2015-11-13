@@ -327,7 +327,9 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 		if( vidRet < 0 )
 		{
 			printf("Decoding Error!!!\n");
-			exit(-2);
+			if ( vidRet == VID_ERR_TIMEOUT )
+				NX_VidDecFlush( hDec );
+			//exit(-2);
 		}
 
 #ifdef _ERROR_AND_SEEK_
