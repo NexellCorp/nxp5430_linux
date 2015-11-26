@@ -36,6 +36,7 @@
 //	system
 #include "../include/nx_alloc_mem.h"
 #include "../include/vpu_types.h"
+#include "../include/nx_fourcc.h"
 
 
 #define	NX_DTAG		"[DRV|VPU_API]"
@@ -1538,6 +1539,9 @@ static NX_VPU_RET VPU_EncOneFrameCommand( NX_VpuCodecInst *pInst, VPU_ENC_RUN_FR
 	{
 		// Registering Source Frame Buffer information
 		// Hide GDI IF under FW level
+		if ( runArg->inImgBuffer.fourCC == FOURCC_NV12 )
+			pEncInfo->cbcrInterleave = 1;
+
 		VpuWriteReg(CMD_ENC_PIC_SRC_INDEX, 2);	//	0/1 : reconstruct & reference buffer
 		VpuWriteReg(CMD_ENC_PIC_SRC_STRIDE, runArg->inImgBuffer.luStride);
 		VpuWriteReg(CMD_ENC_PIC_SRC_ADDR_Y, runArg->inImgBuffer.luPhyAddr);
