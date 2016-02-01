@@ -43,12 +43,12 @@ FFFF021C	// 0x03C : SRAMBASE + Header
 //------------------------------------------------------------------------------ 										
 // Main Bootloader Load Info 										
 //------------------------------------------------------------------------------ 										
-00000000	// 0x040 : Device Read Address from 2ndboot Device.									
+00008000	// 0x040 : Device Read Address from 2ndboot Device.									
 00040000	// 0x044 : Load Size for 2ndboot.									
 FFFF0000	// 0x048 : Load Address for 2ndboot.									
 FFFF0000	// 0x04C : Launch Address for 2ndboot.									 
 										
-00000000	// 0x050	[7:0] - Channel number								
+00000002	// 0x050	[7:0] - Channel number								
 03000000	// 0x054	Boot From USB	[31:24] - 0: USB, 1: SPI, 2: NAND, 3:SDMMC, 4: SDFS							
 00000000	// 0x058									
 										
