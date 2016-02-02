@@ -678,30 +678,30 @@ if [ ${BOARD_NAME} != "build_exit" ]; then
 		echo "     1c. Clean Build"       
 		echo " "
 		echo "--------------------------------------------------------------------"
-		echo "  4. 2ndboot+u-boot+kernel(+Build)   4c. Clean Build"
-		echo "     41.  u-boot(+Build)		41c. u-boot(+Clean Build)"
-		echo "     42.  kernel(+Build)		42c. kernel(+Clean Build)"
-		echo "     43.  2ndboot(+Make)"       
+		echo "  2. 2ndboot+u-boot+kernel(+Build)   2c. Clean Build"
+		echo "     21.  u-boot(+Build)		21c. u-boot(+Clean Build)"
+		echo "     22.  kernel(+Build)		22c. kernel(+Clean Build)"
+		echo "     23.  2ndboot(+Make)"       
 		echo " "
-		echo "     4m.  kernel menuconfig"
-		echo "     4mc. ${KERNEL_CONFIG_NAME}_linux_defconfig -> .config"
-		echo " "
-		echo "--------------------------------------------------------------------"
-		echo "  6. Application+Library(+Build)"
-		echo "     6c. App+Lib(+Clean Build)"       
+		echo "     2m.  kernel menuconfig"
+		echo "     2mc. ${KERNEL_CONFIG_NAME}_linux_defconfig -> .config"
 		echo " "
 		echo "--------------------------------------------------------------------"
-		echo "  7. Buildroot(+Build)"
+		echo "  3. Application+Library(+Build)"
+		echo "     3c. App+Lib(+Clean Build)"       
 		echo " "
 		echo "--------------------------------------------------------------------"
-		echo "  8. Ramdisk(+Make)"
+		echo "  4. Buildroot(+Build)"
 		echo " "
 		echo "--------------------------------------------------------------------"
-		echo "  9. eMMC Packaging(All)"
-		echo "     91. fastboot secondboot(2ndboot)"
-		echo "     92. fastboot bootloader(u-boot)"
-		echo "     93. fastboot boot(kernel)"
-		echo "     94. fastboot system(rootfs)"
+		echo "  5. Ramdisk(+Make)"
+		echo " "
+		echo "--------------------------------------------------------------------"
+		echo "  6. eMMC Packaging(All)"
+		echo "     61. fastboot secondboot(2ndboot)"
+		echo "     62. fastboot bootloader(u-boot)"
+		echo "     63. fastboot boot(kernel)"
+		echo "     64. fastboot system(rootfs)"
 		echo " "
 		echo "--------------------------------------------------------------------"
 		echo "  0. Exit"
@@ -734,61 +734,61 @@ if [ ${BOARD_NAME} != "build_exit" ]; then
 				    ;;
 
 			#------------------------------------------------------------------------------------------------
-			4) CMD_V_KERNEL=yes 
+			2) CMD_V_KERNEL=yes 
 			    CMD_V_KERNEL_MODULE=yes
 			    CMD_V_UBOOT=yes 
 			    ;;
-				4c) CMD_V_UBOOT=yes
+				2c) CMD_V_UBOOT=yes
 					CMD_V_UBOOT_CLEAN=yes				
 					CMD_V_KERNEL=yes 
 					CMD_V_KERNEL_CLEAN=yes
 					CMD_V_KERNEL_MODULE=yes
 				    ;;
-				41) CMD_V_UBOOT=yes							
+				21) CMD_V_UBOOT=yes							
 				    ;;
-				41c) CMD_V_UBOOT=yes
+				21c) CMD_V_UBOOT=yes
 				     CMD_V_UBOOT_CLEAN=yes				
 				     ;;
-				42) CMD_V_KERNEL=yes 						
+				22) CMD_V_KERNEL=yes 						
 				     CMD_V_KERNEL_MODULE=yes
 					 ;;
-				42c) CMD_V_KERNEL=yes 
+				22c) CMD_V_KERNEL=yes 
 				     CMD_V_KERNEL_CLEAN=yes
 					 CMD_V_KERNEL_MODULE=yes
 				     ;;
-				43) CMD_V_2NDBOOT=yes
+				23) CMD_V_2NDBOOT=yes
 					;;
 
-				4m)	build_kernel_current_menuconfig	;;
-				4mc)build_kernel_configcopy	;;
+				2m)	build_kernel_current_menuconfig	;;
+				2mc)build_kernel_configcopy	;;
 
 			#------------------------------------------------------------------------------------------------
-			6)	CMD_V_APPLICATION=yes					
+			3)	CMD_V_APPLICATION=yes					
 				;;
-				6c) CMD_V_APPLICATION=yes
+				3c) CMD_V_APPLICATION=yes
 					CMD_V_APPLICATION_CLEAN=yes
 					;;
 
 			#------------------------------------------------------------------------------------------------
-			7)	CMD_V_BUILDROOT=yes					;;
+			4)	CMD_V_BUILDROOT=yes					;;
 
 			#------------------------------------------------------------------------------------------------
-			8)	CMD_V_FILESYSTEM=yes					;;
+			5)	CMD_V_FILESYSTEM=yes					;;
 
 			#------------------------------------------------------------------------------------------------
-			9)	CMD_V_BUILD_NUM=
+			6)	CMD_V_BUILD_NUM=
 				build_fastboot_2ndboot
 				build_fastboot_uboot
 				build_fastboot_boot
 				build_fastboot_system					;;
 
-				91)	CMD_V_BUILD_NUM=
+				61)	CMD_V_BUILD_NUM=
 					build_fastboot_2ndboot				;;
-				92)	CMD_V_BUILD_NUM=
+				62)	CMD_V_BUILD_NUM=
 					build_fastboot_uboot				;;
-				93)	CMD_V_BUILD_NUM=
+				63)	CMD_V_BUILD_NUM=
 					build_fastboot_boot				;;
-				94)	CMD_V_BUILD_NUM=
+				64)	CMD_V_BUILD_NUM=
 					build_fastboot_system				;;
 
 			#------------------------------------------------------------------------------------------------
