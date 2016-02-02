@@ -467,7 +467,9 @@ static int32_t VpuCamEncMain( CODEC_APP_DATA *pAppData )
 		}
 
 #ifndef ANDROID
+#if (ENABLE_DISPLAY)
 		NX_DspClose( hDsp );
+#endif
 #endif
 		NX_VipClose( hVip );
 

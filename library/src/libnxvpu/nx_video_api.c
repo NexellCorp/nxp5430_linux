@@ -72,6 +72,14 @@ static VID_ERROR_E NX_HevcDecInit (NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeq
 static VID_ERROR_E NX_HevcDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecIn, NX_VID_DEC_OUT *pstDecOut );
 #endif
 
+static int32_t DecoderJpegHeader(	NX_VID_DEC_HANDLE hDec, uint8_t           *pbyStream, int32_t iSize );
+static int32_t DecoderJpegSOF( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm );
+static void DecoderJpegDHT( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm );
+static int32_t DecoderJpegDQT( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm );
+static void	DecoderJpegSOS( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm );
+static void GenerateJpegHuffmanTable( NX_VID_DEC_HANDLE hDec, int32_t iTabNum );
+
+
 //////////////////////////////////////////////////////////////////////////////
 //
 //		Video Encoder APIs
@@ -725,6 +733,41 @@ struct NX_VIDEO_DEC_INFO
 	// For MPEG4
 	int32_t vopTimeBits;
 
+	// For Jpeg Decoder
+	uint32_t headerSize;
+	int32_t thumbnailMode;
+	int32_t frmBufferValid[MAX_DEC_FRAME_BUFFERS];
+	int32_t decodeIdx;
+	int32_t fstFrame;
+
+	int32_t imgFourCC;
+	int32_t rstInterval;
+	int32_t userHuffTable;
+
+	uint8_t  huffBits[4][16];
+	uint8_t  huffPtr[4][16];
+	uint32_t huffMin[4][16];
+	uint32_t huffMax[4][16];
+
+	uint8_t huffValue[4][162];
+	uint8_t infoTable[4][6];
+	uint8_t quantTable[4][64];
+
+	int32_t huffDcIdx;
+	int32_t huffAcIdx;
+	int32_t qIdx;
+
+	int32_t busReqNum;
+	int32_t mcuBlockNum;
+	int32_t compNum;
+	int32_t compInfo[3];
+    int32_t mcuWidth;
+    int32_t mcuHeight;
+
+	int32_t pagePtr;
+	int32_t wordPtr;
+	int32_t bitPtr;
+
 #ifdef HEVC_DEC
 	iv_obj_t *codec_obj;				// HEVC Handle
 	iv_mem_rec_t *pv_mem_rec_location;	// memory table pointer
@@ -805,6 +848,9 @@ NX_VID_DEC_HANDLE NX_VidDecOpen( VID_TYPE_E eCodecType, uint32_t uMp4Class, int3
 				break;
 			case NX_VP8_DEC:	//	VP8
 				openArg.codecStd = CODEC_STD_VP8;
+				break;
+			case NX_JPEG_DEC:
+				openArg.codecStd = CODEC_STD_MJPG;
 				break;
 			default:
 				NX_ErrMsg( ("IOCTL_VPU_OPEN_INSTANCE codec Type\n") );
@@ -1005,48 +1051,112 @@ VID_ERROR_E NX_VidDecParseVideoCfg(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeq
 		seqArg.outWidth 		= pstSeqIn->width;
 		seqArg.outHeight 		= pstSeqIn->height;
 
-		if( pstSeqIn->disableOutReorder )
+		if ( hDec->codecStd != CODEC_STD_MJPG )
 		{
-			NX_DbgMsg( DBG_WARNING, ("Diable Reordering!!!!\n") );
-			seqArg.disableOutReorder = 1;
-		}
+			if( pstSeqIn->disableOutReorder )
+			{
+				NX_DbgMsg( DBG_WARNING, ("Diable Reordering!!!!\n") );
+				seqArg.disableOutReorder = 1;
+			}
 
-		seqArg.enablePostFilter = pstSeqIn->enablePostFilter;
-		seqArg.enableUserData   = (pstSeqIn->enableUserData) && (hDec->codecStd == CODEC_STD_MPEG2);
-		if( seqArg.enableUserData )
-		{
-			NX_DbgMsg(DBG_USER_DATA, ("Enabled user data\n"));
-			hDec->enableUserData = 1;
-			hDec->hUserDataBuffer = NX_AllocateMemory( 0x10000, 4096 );		//	x16 aligned
-			if( 0 == hDec->hUserDataBuffer ){
-				NX_ErrMsg(("hUserDataBuffer allocation failed.(size=%d,align=%d)\n", 0x10000, 4096));
+			seqArg.enablePostFilter = pstSeqIn->enablePostFilter;
+			seqArg.enableUserData   = (pstSeqIn->enableUserData) && (hDec->codecStd == CODEC_STD_MPEG2);
+			if( seqArg.enableUserData )
+			{
+				NX_DbgMsg(DBG_USER_DATA, ("Enabled user data\n"));
+				hDec->enableUserData = 1;
+				hDec->hUserDataBuffer = NX_AllocateMemory( 0x10000, 4096 );		//	x16 aligned
+				if( 0 == hDec->hUserDataBuffer ){
+					NX_ErrMsg(("hUserDataBuffer allocation failed.(size=%d,align=%d)\n", 0x10000, 4096));
+					goto ERROR_EXIT;
+				}
+				seqArg.userDataBuffer = *hDec->hUserDataBuffer;
+			}
+
+			if ( hDec->codecStd == CODEC_STD_AVC )
+			{
+				unsigned char *pbyTmp = seqArg.seqData;
+				if ( (pbyTmp[2] == 0) && (pbyTmp[7] > 51) )
+					pbyTmp[7] = 51;
+				else if ( (pbyTmp[2] == 1) && (pbyTmp[6] > 51) )
+					pbyTmp[6] = 51;
+			}
+
+			ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_SET_SEQ_INFO, &seqArg );
+			if( ret == VID_NEED_STREAM )
+				goto ERROR_EXIT;
+			if( ret < 0 )
+			{
+				NX_ErrMsg( ("IOCTL_VPU_DEC_SET_SEQ_INFO ioctl failed!!!\n") );
 				goto ERROR_EXIT;
 			}
-			seqArg.userDataBuffer = *hDec->hUserDataBuffer;
-		}
 
-		if ( hDec->codecStd == CODEC_STD_AVC )
-		{
-			unsigned char *pbyTmp = seqArg.seqData;
-			if ( (pbyTmp[2] == 0) && (pbyTmp[7] > 51) )
-				pbyTmp[7] = 51;
-			else if ( (pbyTmp[2] == 1) && (pbyTmp[6] > 51) )
-				pbyTmp[6] = 51;
+			if( seqArg.minFrameBufCnt < 1 || seqArg.minFrameBufCnt > MAX_DEC_FRAME_BUFFERS )
+			{
+				NX_ErrMsg( ("IOCTL_VPU_DEC_SET_SEQ_INFO ioctl failed(nimFrameBufCnt = %d)!!!\n", seqArg.minFrameBufCnt) );
+				goto ERROR_EXIT;
+			}
 		}
-
-		ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_SET_SEQ_INFO, &seqArg );
-		if( ret == VID_NEED_STREAM )
-			goto ERROR_EXIT;
-		if( ret < 0 )
+		else
 		{
-			NX_ErrMsg( ("IOCTL_VPU_DEC_SET_SEQ_INFO ioctl failed!!!\n") );
-			goto ERROR_EXIT;
-		}
+			int32_t iRead;
+			int32_t iThumbFlag = 0;
+			VLD_STREAM stStrm = { 0, seqArg.seqData, seqArg.seqDataSize };
 
-		if( seqArg.minFrameBufCnt < 1 || seqArg.minFrameBufCnt > MAX_DEC_FRAME_BUFFERS )
-		{
-			NX_ErrMsg( ("IOCTL_VPU_DEC_SET_SEQ_INFO ioctl failed(nimFrameBufCnt = %d)!!!\n", seqArg.minFrameBufCnt) );
-			goto ERROR_EXIT;
+			iRead = vld_get_bits( &stStrm, 16 );
+			if ( iRead != 0xFFD8 ) 			return -1;
+
+			do {
+				iRead = vld_get_bits( &stStrm, 16 );
+				if ( iRead == 0xFFC0 )			// baseline DCT (SOF)
+				{
+					if ( DecoderJpegSOF( hDec, &stStrm ) < 0 )
+					{
+						pstSeqOut->unsupportedFeature = 1;
+						NX_ErrMsg( ("DecoderJpegSOF() Error : not supported\n") );
+						return -1;
+					}
+
+					if ( iThumbFlag == 0 )
+					{
+						seqArg.outWidth = hDec->width;
+						seqArg.outHeight = hDec->height;
+						pstSeqOut->imgFourCC = hDec->imgFourCC;
+					}
+					else
+					{
+						pstSeqOut->thumbnailWidth = hDec->width;
+						pstSeqOut->thumbnailHeight = hDec->height;
+					}
+
+					ret = VID_ERR_NONE;
+
+					if ( iThumbFlag == 0 )
+						break;
+					else
+						iThumbFlag = 0;
+				}
+				else if ( ((iRead >= 0xFFC1) && (iRead <= 0xFFC3)) || ((iRead >= 0xFFC5) && (iRead <= 0xFFCF)) )
+				{
+					NX_ErrMsg( ("Profile is not supported\n") );
+					pstSeqOut->unsupportedFeature = 1;
+					return -1;
+				}
+				else if ( iRead == 0xFFD8 )		// SOI(Start of Image), Thumbnail
+				{
+					iThumbFlag = 1;
+					pstSeqOut->thumbnailWidth;
+					pstSeqOut->thumbnailHeight;
+				}
+				else
+				{
+					stStrm.dwUsedBits -= 8;
+				}
+			} while( 1 );
+
+			seqArg.cropRight = seqArg.outWidth;
+			seqArg.cropBottom = seqArg.outHeight;
+			seqArg.minFrameBufCnt = 1;
 		}
 
 		hDec->seqDataSize = ( pstSeqIn->seqSize < 2048 ) ? ( pstSeqIn->seqSize ) : ( 2048 );
@@ -1151,34 +1261,67 @@ VID_ERROR_E NX_VidDecInit(NX_VID_DEC_HANDLE hDec, NX_VID_SEQ_IN *pstSeqIn)
 
 		NX_ErrMsg( ("Frame Buffer Number = %d, useExternalFrameBuffer = %x \n", hDec->numFrameBuffers, hDec->useExternalFrameBuffer ) );
 
-		//	Allocation & Save Parameter in the decoder handle.
-		if( 0 != AllocateDecoderMemory( hDec ) )
+		if ( hDec->codecStd != CODEC_STD_MJPG )
 		{
-			ret = VID_ERR_NOT_ALLOC_BUFF;
-			NX_ErrMsg(("AllocateDecoderMemory() Failed!!!\n"));
-			goto ERROR_EXIT;
-		}
+			//	Allocation & Save Parameter in the decoder handle.
+			if( 0 != AllocateDecoderMemory( hDec ) )
+			{
+				ret = VID_ERR_NOT_ALLOC_BUFF;
+				NX_ErrMsg(("AllocateDecoderMemory() Failed!!!\n"));
+				goto ERROR_EXIT;
+			}
 
-		//	Set Frame Argement Valiable
-		frameArg.numFrameBuffer = hDec->numFrameBuffers;
-		for( i=0 ; i< hDec->numFrameBuffers ; i++ )
-		{
-			if( hDec->useExternalFrameBuffer )
-				hDec->hFrameBuffer[i] = pstSeqIn->pMemHandle[i];
-			frameArg.frameBuffer[i] = *hDec->hFrameBuffer[i];
-		}
-		if( hDec->hSliceBuffer )
-			frameArg.sliceBuffer = *hDec->hSliceBuffer;
-		if( hDec->hColMvBuffer)
-			frameArg.colMvBuffer = *hDec->hColMvBuffer;
-		if( hDec->hPvbSliceBuffer )
-			frameArg.pvbSliceBuffer = *hDec->hPvbSliceBuffer;
+			//	Set Frame Argement Valiable
+			frameArg.numFrameBuffer = hDec->numFrameBuffers;
+			for( i=0 ; i< hDec->numFrameBuffers ; i++ )
+			{
+				if( hDec->useExternalFrameBuffer )
+					hDec->hFrameBuffer[i] = pstSeqIn->pMemHandle[i];
+				frameArg.frameBuffer[i] = *hDec->hFrameBuffer[i];
+			}
+			if( hDec->hSliceBuffer )
+				frameArg.sliceBuffer = *hDec->hSliceBuffer;
+			if( hDec->hColMvBuffer)
+				frameArg.colMvBuffer = *hDec->hColMvBuffer;
+			if( hDec->hPvbSliceBuffer )
+				frameArg.pvbSliceBuffer = *hDec->hPvbSliceBuffer;
 
-		ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_REG_FRAME_BUF, &frameArg );
-		if( ret < 0 )
+			ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_REG_FRAME_BUF, &frameArg );
+			if( ret < 0 )
+			{
+				NX_ErrMsg( ("IOCTL_VPU_DEC_REG_FRAME_BUF ioctl failed!!!\n") );
+				goto ERROR_EXIT;
+			}
+		}
+		else
 		{
-			NX_ErrMsg( ("IOCTL_VPU_DEC_REG_FRAME_BUF ioctl failed!!!\n") );
-			goto ERROR_EXIT;
+			if ( (pstSeqIn->width) && (pstSeqIn->height) )
+			{
+				if ( (pstSeqIn->width != hDec->width) || (pstSeqIn->height != hDec->height) )
+				{
+					hDec->thumbnailMode = 1;
+					hDec->width = pstSeqIn->width;
+					hDec->height = pstSeqIn->height;
+				}
+			}
+
+			ret = DecoderJpegHeader( hDec, pstSeqIn->seqInfo, pstSeqIn->seqSize );
+			if ( ret < 0 )
+			{
+				NX_ErrMsg( ("JpegDecodeHeader() failed(Return Error = %d)!!!\n", ret) );
+				goto ERROR_EXIT;
+			}
+
+			//	Set Frame Argument Valiable
+			for( i=0 ; i<hDec->numFrameBuffers ; i++ )
+			{
+				hDec->hFrameBuffer[i] = (!hDec->useExternalFrameBuffer) ? (NX_VideoAllocateMemory(4096, hDec->width, hDec->height, NX_MEM_MAP_LINEAR, hDec->imgFourCC)) : (pstSeqIn->pMemHandle[i]);
+				if( hDec->hFrameBuffer[i] == NULL ){
+					NX_ErrMsg(("Frame memory allocation(%d x %d) failed.(i=%d)\n", hDec->width, hDec->height, i));
+					goto ERROR_EXIT;
+				}
+				hDec->frmBufferValid[i] = VID_ERR_NONE;
+			}
 		}
 	}
 #ifdef HEVC_DEC
@@ -1235,6 +1378,86 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 				pbyTmp[6] = 51;
 		}
 
+		if( hDec->codecStd == CODEC_STD_MJPG )
+		{
+			decArg.downScaleWidth = pstDecIn->downScaleWidth;
+			decArg.downScaleHeight = pstDecIn->downScaleHeight;
+
+			if ( hDec->fstFrame )
+			{
+				if ( DecoderJpegHeader( hDec, pstDecIn->strmBuf, pstDecIn->strmSize ) < 0 )
+					return VID_ERR_WRONG_SEQ;
+			}
+			else
+			{
+				hDec->fstFrame = 1;
+			}
+
+			decArg.strmData  += hDec->headerSize;
+			decArg.strmDataSize -= hDec->headerSize;
+
+			//decArg.imgFourCC = hDec->imgFourCC;
+			decArg.rstInterval = hDec->rstInterval;
+			decArg.userHuffTable = hDec->userHuffTable;
+
+			decArg.huffBits = hDec->huffBits;
+			decArg.huffPtr = hDec->huffPtr;
+			decArg.huffMin = hDec->huffMin;
+			decArg.huffMax = hDec->huffMax;
+
+			decArg.huffValue = hDec->huffValue;
+			decArg.infoTable = hDec->infoTable;
+			decArg.quantTable = hDec->quantTable;
+
+			decArg.huffAcIdx = hDec->huffAcIdx;
+			decArg.huffDcIdx = hDec->huffDcIdx;
+			//hDec->qIdx;
+
+			decArg.busReqNum = hDec->busReqNum;
+			decArg.mcuBlockNum = hDec->mcuBlockNum;
+			decArg.compNum = hDec->compNum;
+			decArg.compInfo = hDec->compInfo;
+			//hDec->mcuWidth;
+			//hDec->mcuHeight;
+
+			decArg.width = hDec->width;
+			decArg.height = hDec->height;
+
+			decArg.outRect.left = 0;
+			decArg.outRect.right = hDec->width;
+			decArg.outRect.top = 0;
+			decArg.outRect.bottom = hDec->height;
+
+			decArg.pagePtr = hDec->pagePtr;
+			decArg.wordPtr = hDec->wordPtr;
+			decArg.bitPtr = hDec->bitPtr;
+
+			{
+				int32_t i;
+				for ( i = 1 ; i <= hDec->numFrameBuffers ; i++ )
+				{
+					int32_t Idx = hDec->decodeIdx + i;
+					if ( Idx >= hDec->numFrameBuffers )
+						Idx -= hDec->numFrameBuffers;
+
+					if ( hDec->frmBufferValid[ Idx ] == VID_ERR_NONE )
+					{
+						hDec->decodeIdx = Idx;
+						decArg.hCurrFrameBuffer = hDec->hFrameBuffer[Idx];
+						decArg.indexFrameDecoded = Idx;
+						decArg.indexFrameDisplay = Idx;
+						break;
+					}
+				}
+
+				if ( i > hDec->numFrameBuffers )
+				{
+					NX_ErrMsg( ("Frame Buffer for Decoding is not sufficient!!!\n" ) );
+					return VID_ERR_NO_DEC_FRAME;
+				}
+			}
+		}
+
 #if 0
 		if ( pstDecIn->strmSize > 0 )
 		{
@@ -1281,6 +1504,11 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 			return (decArg.iRet);
 		}
 
+		if( hDec->codecStd == CODEC_STD_MJPG )
+		{
+			hDec->frmBufferValid[decArg.indexFrameDecoded] = VID_ERR_FAIL;
+		}
+
 		pstDecOut->outImgIdx = decArg.indexFrameDisplay;
 		pstDecOut->outDecIdx = decArg.indexFrameDecoded;
 		pstDecOut->width     = decArg.outRect.right;
@@ -1296,44 +1524,59 @@ VID_ERROR_E NX_VidDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN *pstDecI
 				pstDecOut->outFrmReliable_0_100[DECODED_FRAME] = ( pstDecOut->outDecIdx < 0 ) ? ( 0 ) : ( 100 );
 			else
 			{
-				int32_t TotalMbNum = ( (decArg.outWidth + 15) >> 4 ) * ( (decArg.outHeight + 15) >> 4 );
-				pstDecOut->outFrmReliable_0_100[DECODED_FRAME] = (TotalMbNum - decArg.numOfErrMBs) * 100 / TotalMbNum;
+				if ( hDec->codecStd != CODEC_STD_MJPG )
+				{
+					int32_t TotalMbNum = ( (decArg.outWidth + 15) >> 4 ) * ( (decArg.outHeight + 15) >> 4 );
+					pstDecOut->outFrmReliable_0_100[DECODED_FRAME] = (TotalMbNum - decArg.numOfErrMBs) * 100 / TotalMbNum;
+				}
+				else
+				{
+					int32_t PosX = ((decArg.numOfErrMBs >> 12) & 0xFFF) * hDec->mcuWidth;
+					int32_t PosY = (decArg.numOfErrMBs & 0xFFF) * hDec->mcuHeight;
+					int32_t PosRst= ((decArg.numOfErrMBs >> 24) & 0xF) * hDec->mcuWidth * hDec->mcuHeight;
+					pstDecOut->outFrmReliable_0_100[DECODED_FRAME] = (PosRst + (PosY * hDec->width) + PosX) * 100 / (hDec->width * hDec->height);
+				}
 			}
 		}
 
-		if ( pstDecIn->strmSize > 0 )
+		if ( hDec->codecStd != CODEC_STD_MJPG )
 		{
-			uint32_t strmWritePos = ( decArg.strmWritePos >= (uint32_t)pstDecIn->strmSize ) ? ( decArg.strmWritePos ) : ( decArg.strmWritePos + hDec->hBitStreamBuf->size );
-			uint32_t strmReadPos  = ( decArg.strmReadPos >= hDec->prevStrmReadPos ) ? ( decArg.strmReadPos ) : ( decArg.strmReadPos + hDec->hBitStreamBuf->size );
-
-			if ( strmWritePos < strmReadPos )
-				strmWritePos += hDec->hBitStreamBuf->size;
-
-			if ( (strmReadPos + pstDecIn->strmSize) > strmWritePos )
+			if ( pstDecIn->strmSize > 0 )
 			{
-				timeStamp = pstDecIn->timeStamp;
+				uint32_t strmWritePos = ( decArg.strmWritePos >= (uint32_t)pstDecIn->strmSize ) ? ( decArg.strmWritePos ) : ( decArg.strmWritePos + hDec->hBitStreamBuf->size );
+				uint32_t strmReadPos  = ( decArg.strmReadPos >= hDec->prevStrmReadPos ) ? ( decArg.strmReadPos ) : ( decArg.strmReadPos + hDec->hBitStreamBuf->size );
+
+				if ( strmWritePos < strmReadPos )
+					strmWritePos += hDec->hBitStreamBuf->size;
+
+				if ( (strmReadPos + pstDecIn->strmSize) > strmWritePos )
+				{
+					timeStamp = pstDecIn->timeStamp;
+				}
+				else
+				{
+					timeStamp = hDec->savedTimeStamp;
+					hDec->savedTimeStamp = pstDecIn->timeStamp;
+				}
+
+				hDec->prevStrmReadPos = decArg.strmReadPos;
 			}
 			else
 			{
-				timeStamp = hDec->savedTimeStamp;
-				hDec->savedTimeStamp = pstDecIn->timeStamp;
+				//if ( (decArg.strmWritePos - decArg.strmReadPos < 4) || (hDec->hBitStreamBuf->size + decArg.strmWritePos - decArg.strmReadPos < 4) )
+				if ( (hDec->savedTimeStamp == (uint64_t)-1) && (decArg.strmWritePos - decArg.strmReadPos < 4) )
+				{
+					timeStamp = pstDecIn->timeStamp;
+				}
+				else
+				{
+					timeStamp = hDec->savedTimeStamp;
+					hDec->savedTimeStamp = pstDecIn->timeStamp;
+				}
 			}
-
-			hDec->prevStrmReadPos = decArg.strmReadPos;
 		}
 		else
-		{
-			//if ( (decArg.strmWritePos - decArg.strmReadPos < 4) || (hDec->hBitStreamBuf->size + decArg.strmWritePos - decArg.strmReadPos < 4) )
-			if ( (hDec->savedTimeStamp == (uint64_t)-1) && (decArg.strmWritePos - decArg.strmReadPos < 4) )
-			{
-				timeStamp = pstDecIn->timeStamp;
-			}
-			else
-			{
-				timeStamp = hDec->savedTimeStamp;
-				hDec->savedTimeStamp = pstDecIn->timeStamp;
-			}
-		}
+			timeStamp = pstDecIn->timeStamp;
 
 		DecoderPutDispInfo( hDec, pstDecOut->outDecIdx, &decArg, timeStamp, pstDecOut->outFrmReliable_0_100[DECODED_FRAME] );
 
@@ -1417,11 +1660,20 @@ VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec )
 
 	if ( hDec->codecStd != CODEC_STD_HEVC )
 	{
-		ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_FLUSH, NULL );
-		if( ret < 0 )
+		if ( hDec->codecStd != CODEC_STD_MJPG )
 		{
-			NX_ErrMsg( ("IOCTL_VPU_DEC_FLUSH ioctl failed!!!\n") );
-			return -1;
+			ret = ioctl( hDec->hDecDrv, IOCTL_VPU_DEC_FLUSH, NULL );
+			if( ret < 0 )
+			{
+				NX_ErrMsg( ("IOCTL_VPU_DEC_FLUSH ioctl failed!!!\n") );
+				return -1;
+			}
+		}
+		else
+		{
+			int32_t i;
+			for ( i = 0 ; i < hDec->numFrameBuffers ; i++ )
+				hDec->frmBufferValid[ i ] = VID_ERR_NONE;
 		}
 
 		DecoderFlushDispInfo( hDec );
@@ -1440,6 +1692,12 @@ VID_ERROR_E NX_VidDecClrDspFlag( NX_VID_DEC_HANDLE hDec, NX_VID_MEMORY_HANDLE hF
 	if( !hDec->isInitialized  )
 	{
 		return -1;
+	}
+
+	if ( hDec->codecStd == CODEC_STD_MJPG )
+	{
+		hDec->frmBufferValid[ iFrameIdx ] = VID_ERR_NONE;
+		return VID_ERR_NONE;
 	}
 
 	if ( hDec->codecStd != CODEC_STD_HEVC )
@@ -2025,6 +2283,385 @@ static void Mp4DecParserFrameHeader ( NX_VID_DEC_HANDLE hDec, VPU_DEC_DEC_FRAME_
 
 		if ( vld_get_bits( &stStrm, 1 ) == 0 )						// vop_coded
 			pDecArg->strmDataSize = 0;
+	}
+}
+
+static int32_t DecoderJpegHeader(	NX_VID_DEC_HANDLE hDec, uint8_t           *pbyStream, int32_t iSize )
+{
+	uint32_t   uPreFourByte = 0;
+	uint8_t    *pbyStrm = pbyStream;
+	int32_t    i, iStartCode;
+
+	if ( (pbyStrm == NULL) || (iSize <= 0) )
+		return -1;
+	if ( (pbyStrm[0] != 0xFF) || (pbyStrm[1] != 0xD8) )	// SOI(Start Of Image) check
+		return -1;
+
+	pbyStrm += 2;
+	do
+	{
+		if ( pbyStrm >= (pbyStream + iSize) )		return VID_ERR_NOT_ENOUGH_STREAM;
+		uPreFourByte = (uPreFourByte << 8) + *pbyStrm++;
+		iStartCode   = uPreFourByte & 0xFFFF;
+
+		if ( iStartCode == 0xFFC0 )						// SOF(Start of Frame)- Baseline DCT
+		{
+			VLD_STREAM stStrm = { 0, pbyStrm, iSize };
+			if ( DecoderJpegSOF( hDec, &stStrm ) < 0 )
+				return -1;
+			pbyStrm += (stStrm.dwUsedBits >> 3);
+		}
+		else if ( iStartCode == 0xFFC4 )				// DHT(Define Huffman Table)
+		{
+			VLD_STREAM stStrm = { 0, pbyStrm, iSize };
+			DecoderJpegDHT( hDec, &stStrm );
+			pbyStrm += (stStrm.dwUsedBits >> 3);
+		}
+		else if ( iStartCode == 0xFFDA )				// SOS(Start Of Scan)
+		{
+			VLD_STREAM stStrm = { 0, pbyStrm, iSize };
+			DecoderJpegSOS( hDec, &stStrm );
+			pbyStrm += (stStrm.dwUsedBits >> 3);
+			break;
+		}
+		else if ( iStartCode == 0xFFDB )				// DQT(Define Quantization Table)
+		{
+			VLD_STREAM stStrm = { 0, pbyStrm, iSize };
+			if ( DecoderJpegDQT( hDec, &stStrm ) < 0 )
+				return -1;
+			pbyStrm += (stStrm.dwUsedBits >> 3);
+		}
+		else if ( iStartCode == 0xFFDD )				// DRI(Define Restart Interval)
+		{
+			hDec->rstInterval = (pbyStrm[2] << 8) | (pbyStrm[3]);
+			pbyStrm += 4;
+		}
+		else if ( iStartCode == 0xFFD8 )				// SOI
+		{
+			if ( hDec->thumbnailMode == 0 )
+			{
+				do
+				{
+					if ( pbyStrm >= (pbyStream + iSize) )		return VID_ERR_NOT_ENOUGH_STREAM;
+					uPreFourByte = (uPreFourByte << 8) + *pbyStrm++;
+					iStartCode   = uPreFourByte & 0xFFFF;
+				}
+				while ( iStartCode != 0xFFD9 );
+			}
+		}
+		else if ( iStartCode == 0xFFD9 )				// EOI(End Of Image)
+		{
+			break;
+		}
+	} while( 1 );
+
+	hDec->headerSize = (uint32_t)((long)pbyStrm - (long)pbyStream + 3);
+
+	{
+		int ecsPtr;
+
+		ecsPtr = 0;
+		//ecsPtr = hDec->headerSize;
+
+		hDec->pagePtr = ecsPtr / 256;
+		hDec->wordPtr = (ecsPtr % 256) / 4;
+		if ( hDec->pagePtr & 1 )
+			hDec->wordPtr += 64;
+		if ( hDec->wordPtr & 1 )
+			hDec->wordPtr -= 1;
+
+		hDec->bitPtr = (ecsPtr % 4) * 8;
+		if (((ecsPtr % 256) / 4) & 1 )
+			hDec->bitPtr += 32;
+	}
+
+	// Generate Huffman table information
+	for( i=0; i<4; i++ )
+		GenerateJpegHuffmanTable( hDec, i );
+
+	hDec->qIdx = (hDec->infoTable[0][3] << 2) | (hDec->infoTable[1][3] << 1) | (hDec->infoTable[2][3]);
+	hDec->huffDcIdx = (hDec->infoTable[0][4] << 2) | (hDec->infoTable[1][4] << 1) | (hDec->infoTable[2][4]);
+	hDec->huffAcIdx = (hDec->infoTable[0][5] << 2) | (hDec->infoTable[1][5] << 1) | (hDec->infoTable[2][5]);
+
+	return 0;
+}
+
+static int32_t DecoderJpegSOF( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm )
+{
+	int32_t iWidth, iHeight;
+	int32_t iCompNum;
+	int32_t iSampleFactor;
+	int32_t i;
+
+	vld_flush_bits( pstStrm, 16 );				// frame header length
+	if ( vld_get_bits( pstStrm, 8 ) != 8 )		// sample precision
+		return -1;
+
+	iHeight = vld_get_bits( pstStrm, 16 );
+	iWidth  = vld_get_bits( pstStrm, 16 );
+
+	iCompNum = vld_get_bits( pstStrm, 8 ); 		// number of image components in frame
+	if ( iCompNum > 3 )
+		return -1;
+
+	for (i=0 ; i<iCompNum ; i++)
+	{
+	    hDec->infoTable[i][0] = vld_get_bits( pstStrm, 8 );	// CompId
+	    hDec->infoTable[i][1] = vld_get_bits( pstStrm, 4 );	// HSampligFactor
+	    hDec->infoTable[i][2] = vld_get_bits( pstStrm, 4 );	// VSampligFactor
+	    hDec->infoTable[i][3] = vld_get_bits( pstStrm, 8 );	// QTableDestSelector
+	}
+
+	if ( iCompNum == 1 )
+	{
+		hDec->imgFourCC = FOURCC_GRAY;
+		hDec->width  = ( iWidth  + 7 ) & (~7);
+		hDec->height = ( iHeight + 7 ) & (~7);
+		hDec->busReqNum = 4;
+		hDec->mcuBlockNum = 1;
+		hDec->compNum = 1;
+		hDec->compInfo[0] = 5;
+		hDec->compInfo[1] = 0;
+		hDec->compInfo[2] = 0;
+		hDec->mcuWidth  = 8;
+		hDec->mcuHeight = 8;
+	}
+	else if ( iCompNum == 3 )
+	{
+		iSampleFactor = ( (hDec->infoTable[0][1]&3) << 4 ) | ( hDec->infoTable[0][2]&3 );
+		switch ( iSampleFactor )
+		{
+			case 0x11 :
+				hDec->imgFourCC = FOURCC_MVS4;
+				hDec->width  = ( iWidth  + 7 ) & (~7);
+				hDec->height = ( iHeight + 7 ) & (~7);
+				hDec->busReqNum = 4;
+				hDec->mcuBlockNum = 3;
+				hDec->compNum = 3;
+				hDec->compInfo[0] = 5;
+				hDec->compInfo[1] = 5;
+				hDec->compInfo[2] = 5;
+				hDec->mcuWidth  = 8;
+				hDec->mcuHeight = 8;
+				break;
+
+			case 0x12 :
+				hDec->imgFourCC = FOURCC_V422;
+				hDec->width  = ( iWidth  + 7  ) & ( ~7);
+				hDec->height = ( iHeight + 15 ) & (~15);
+				hDec->busReqNum = 3;
+				hDec->mcuBlockNum = 4;
+				hDec->compNum = 3;
+				hDec->compInfo[0] = 6;
+				hDec->compInfo[1] = 5;
+				hDec->compInfo[2] = 5;
+				hDec->mcuWidth  = 8;
+				hDec->mcuHeight = 16;
+				break;
+
+			case 0x21 :
+				hDec->imgFourCC = FOURCC_H422;
+				hDec->width  = ( iWidth  + 15 ) & (~15);
+				hDec->height = ( iHeight +  7 ) & ( ~7);
+				hDec->busReqNum = 3;
+				hDec->mcuBlockNum = 4;
+				hDec->compNum = 3;
+				hDec->compInfo[0] = 9;
+				hDec->compInfo[1] = 5;
+				hDec->compInfo[2] = 5;
+				hDec->mcuWidth  = 16;
+				hDec->mcuHeight = 8;
+				break;
+
+			case 0x22 :
+				hDec->imgFourCC = FOURCC_MVS0;
+				hDec->width  = ( iWidth  + 15 ) & (~15);
+				hDec->height = ( iHeight + 15 ) & (~15);
+				hDec->busReqNum = 2;
+				hDec->mcuBlockNum = 6;
+				hDec->compNum = 3;
+				hDec->compInfo[0] = 10;
+				hDec->compInfo[1] = 5;
+				hDec->compInfo[2] = 5;
+				hDec->mcuWidth  = 16;
+				hDec->mcuHeight = 16;
+				break;
+			default :
+				return -1;
+		}
+	}
+
+	return 0;
+}
+
+static void DecoderJpegDHT( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm )
+{
+#if 1
+	const uint8_t DefHuffmanBits[4][16] =	{
+		{ 0x00, 0x01, 0x05, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },	// DC index 0 (Luminance DC)
+		{ 0x00, 0x02, 0x01, 0x03, 0x03, 0x02, 0x04, 0x03, 0x05, 0x05, 0x04, 0x04, 0x00, 0x00, 0x01, 0x7D },	// AC index 0 (Luminance AC)
+		{ 0x00, 0x03, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 },	// DC index 1 (Chrominance DC)
+		{ 0x00, 0x02, 0x01, 0x02, 0x04, 0x04, 0x03, 0x04, 0x07, 0x05, 0x04, 0x04, 0x00, 0x01, 0x02, 0x77 }	// AC index 1 (Chrominance AC)
+	};
+
+	const uint8_t DefHuffmanValue[4][162] =
+	{
+		{	// DC index 0 (Luminance DC)
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B
+		},
+		{	// AC index 0 (Luminance AC)
+			0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12, 0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07,
+			0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xA1, 0x08, 0x23, 0x42, 0xB1, 0xC1, 0x15, 0x52, 0xD1, 0xF0,
+			0x24, 0x33, 0x62, 0x72, 0x82, 0x09, 0x0A, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x25, 0x26, 0x27, 0x28,
+			0x29, 0x2A, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49,
+			0x4A, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+			0x6A, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
+			0x8A, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7,
+			0xA8, 0xA9, 0xAA, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xC2, 0xC3, 0xC4, 0xC5,
+			0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xE1, 0xE2,
+			0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8,
+			0xF9, 0xFA
+		},
+		{	// DC index 1 (Chrominance DC)
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B
+		},
+		{	// AC index 1 (Chrominance AC)
+			0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05, 0x21, 0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71,
+			0x13, 0x22, 0x32, 0x81, 0x08, 0x14, 0x42, 0x91, 0xA1, 0xB1, 0xC1, 0x09, 0x23, 0x33, 0x52, 0xF0,
+			0x15, 0x62, 0x72, 0xD1, 0x0A, 0x16, 0x24, 0x34, 0xE1, 0x25, 0xF1, 0x17, 0x18, 0x19, 0x1A, 0x26,
+			0x27, 0x28, 0x29, 0x2A, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48,
+			0x49, 0x4A, 0x53, 0x54, 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68,
+			0x69, 0x6A, 0x73, 0x74, 0x75, 0x76, 0x77, 0x78, 0x79, 0x7A, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+			0x88, 0x89, 0x8A, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0xA2, 0xA3, 0xA4, 0xA5,
+			0xA6, 0xA7, 0xA8, 0xA9, 0xAA, 0xB2, 0xB3, 0xB4, 0xB5, 0xB6, 0xB7, 0xB8, 0xB9, 0xBA, 0xC2, 0xC3,
+			0xC4, 0xC5, 0xC6, 0xC7, 0xC8, 0xC9, 0xCA, 0xD2, 0xD3, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA,
+			0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7, 0xF8,
+			0xF9, 0xFA
+		}
+	};
+#endif
+
+	int32_t i;
+	int32_t iLength;
+	int32_t iTC, iTH, iTcTh;
+	int32_t iBitCnt;
+
+	iLength = vld_get_bits( pstStrm, 16 ) - 2;
+	do
+	{
+		iTC = vld_get_bits( pstStrm, 4 );			// table class
+		iTH = vld_get_bits( pstStrm, 4 );			// table destination identifier
+		iTcTh = ( (iTH&1) << 1 ) | ( iTC&1 );
+
+		// Get Huff Bits list
+		iBitCnt = 0;
+		for (i=0 ; i<16 ; i++)
+		{
+			hDec->huffBits[iTcTh][i] = vld_get_bits( pstStrm, 8 );
+			iBitCnt += hDec->huffBits[iTcTh][i];
+			if (DefHuffmanBits[iTcTh][i] != hDec->huffBits[iTcTh][i])
+				hDec->userHuffTable = 1;
+		}
+
+		// Get Huff Val list
+		for (i=0 ; i<iBitCnt ; i++)
+		{
+			hDec->huffValue[iTcTh][i] = vld_get_bits( pstStrm, 8 );
+			if (DefHuffmanValue[iTcTh][i] != hDec->huffValue[iTcTh][i])
+				hDec->userHuffTable = 1;
+		}
+	} while ( iLength > (pstStrm->dwUsedBits >> 3) );
+}
+
+static int32_t DecoderJpegDQT( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm )
+{
+	int32_t i;
+	int32_t iLength;
+	int32_t iTQ;
+	uint8_t *pbyQTable;
+
+	iLength = vld_get_bits( pstStrm, 16 ) - 2;
+	do
+	{
+		if ( vld_get_bits( pstStrm, 4 ) >= 1 )		// Pq
+			return -1;
+
+		if ( (iTQ = vld_get_bits( pstStrm, 4 )) > 3 )
+			return -1;
+
+		pbyQTable = hDec->quantTable[iTQ];
+
+		for (i=0 ; i<64 ; i++)
+		{
+			if ( (pbyQTable[i] = vld_get_bits( pstStrm, 8 )) == 0 )
+				return -1;
+		}
+	}
+	while( iLength > (pstStrm->dwUsedBits >> 3) );
+
+	return 0;
+}
+
+static void	DecoderJpegSOS( NX_VID_DEC_HANDLE hDec, VLD_STREAM *pstStrm )
+{
+	int32_t i, j;
+	int32_t iCompNum, iCompId;
+	int32_t iDcHuffTabIdx[3];
+	int32_t iAcHuffTabIdx[3];
+
+	vld_flush_bits( pstStrm, 16 );
+	iCompNum = vld_get_bits( pstStrm, 8 );
+	for( i=0 ; i<iCompNum ; i++ )
+	{
+		iCompId = vld_get_bits( pstStrm, 8 );
+		iDcHuffTabIdx[i] = vld_get_bits( pstStrm, 4 );
+		iAcHuffTabIdx[i] = vld_get_bits( pstStrm, 4 );
+
+		for ( j=0 ; j<iCompNum ; j++ )
+		{
+			if ( iCompId == hDec->infoTable[j][0] )
+			{
+				hDec->infoTable[i][4] = iDcHuffTabIdx[i];
+				hDec->infoTable[i][5] = iAcHuffTabIdx[i];
+			}
+		}
+	}
+}
+
+static void GenerateJpegHuffmanTable( NX_VID_DEC_HANDLE hDec, int32_t iTabNum )
+{
+	int32_t iPtrCnt = 0;
+	int32_t iHuffCode = 0;
+	int32_t iZeroFlag = 0;
+	int32_t iDataFlag = 0;
+	int32_t i;
+
+	uint8_t   *pbyHuffBits = hDec->huffBits[iTabNum];
+	uint8_t   *pbyHuffPtr  = hDec->huffPtr[iTabNum];
+	uint32_t  *uHuffMax    = hDec->huffMax[iTabNum];
+	uint32_t  *uHuffMin    = hDec->huffMin[iTabNum];
+
+	for (i=0; i<16; i++)
+	{
+		if ( pbyHuffBits[i] ) // if there is bit cnt value
+		{
+			pbyHuffPtr[i] = iPtrCnt;
+			iPtrCnt += pbyHuffBits[i];
+			uHuffMin[i] = iHuffCode;
+			uHuffMax[i] = iHuffCode + (pbyHuffBits[i] - 1);
+			iDataFlag = 1;
+			iZeroFlag = 0;
+		}
+		else
+		{
+			pbyHuffPtr[i] = 0xFF;
+			uHuffMin[i] = 0xFFFF;
+			uHuffMax[i] = 0xFFFF;
+			iZeroFlag = 1;
+		}
+
+		if (iDataFlag == 1)
+			iHuffCode = ( iZeroFlag == 1 ) ? ( iHuffCode << 1 ) : ( (uHuffMax[i] + 1) << 1 );
 	}
 }
 

@@ -62,5 +62,6 @@ LOCAL_LDFLAGS += \
 	-ltheoraparser_and
 
 LOCAL_MODULE:= codec_tests
+LOCAL_MODULE_PATH := $(LOCAL_PATH)
 
 include $(BUILD_EXECUTABLE)

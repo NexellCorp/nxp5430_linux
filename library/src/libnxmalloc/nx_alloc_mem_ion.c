@@ -155,28 +155,34 @@ NX_VID_MEMORY_HANDLE NX_VideoAllocateMemory( int align, int width, int height, i
 			cHeight = ALIGN(height/2, 16);
 			// cWidth  = lWidth/2;
 			// cHeight = lHeight/2;
-			cSize = cWidth * cHeight;
 			break;
 		case FOURCC_MVS2:
+		case FOURCC_H422:
 			cWidth  = ALIGN(width/2, 16);
 			cHeight = lHeight;
-			cSize = cWidth * cHeight;
+			break;
+		case FOURCC_V422:
+			cWidth  = lWidth;
+			cHeight = ALIGN(height/2, 16);
 			break;
 		case FOURCC_MVS4:
 			cWidth  = lWidth;
 			cHeight = lHeight;
-			cSize = cWidth * cHeight;
 			break;
 		case FOURCC_NV12:
 		case FOURCC_NV21:
 			cWidth  = lWidth;
 			cHeight = lHeight/2;
-			cSize = cWidth * cHeight;
+			break;
+		case FOURCC_GRAY:
+			cWidth  = 0;
+			cHeight = 0;
 			break;
 		default:
 			ErrMsg("Unknown fourCC type.\n");
 			goto Error_Exit;
 	}
+	cSize = cWidth * cHeight;
 
 #ifdef EN_MULTIPLE_PLANE
 	luHandle = NX_AllocateMemory(lSize, align);
@@ -401,7 +407,7 @@ int NX_PrivateHandleToVideoMemory( struct private_handle_t const *handle, NX_VID
 	memInfo->cbPhyAddr = memInfo->luPhyAddr + handle->stride * vstride;
 	memInfo->crPhyAddr = memInfo->cbPhyAddr + ALIGN((handle->stride>>1),16) * ALIGN((vstride>>1),16);
 	memInfo->luStride  = handle->stride;
-	memInfo->cbStride  = 
+	memInfo->cbStride  =
 	memInfo->crStride  = handle->stride >> 1;;
 	close( ion_fd );
 	return 0;

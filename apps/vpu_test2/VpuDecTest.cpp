@@ -1,6 +1,7 @@
 //#define _ERROR_AND_SEEK_
 //#define _DUMP_ES_
 //#define DEINTERLACE_ENABLE
+//#define _THUMBNAIL_TEST_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -175,8 +176,15 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 				exit(-1);
 			}
 
+#ifndef _THUMBNAIL_TEST_
 			seqIn.width = seqOut.width;
 			seqIn.height = seqOut.height;
+#else
+			seqIn.width = seqOut.thumbnailWidth;
+			seqIn.height = seqOut.thumbnailHeight;
+			seqIn.addNumBuffers = 0;
+#endif
+
 			vidRet = NX_VidDecInit( hDec, &seqIn );
 			if( vidRet == VID_NEED_STREAM )
 			{
@@ -254,12 +262,16 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			printf("unsupportedFeature = %d \n", seqOut.unsupportedFeature);
 
 			bInit = 1;
-			seqSize = 0;
 
-			if( vpuCodecType != NX_HEVC_DEC )
-				size = 0;
-			if ( (vpuCodecType == NX_VC1_DEC) && (streamBuffer[0] == 0) && (streamBuffer[1] == 0) && (streamBuffer[2] == 1) )
-				continue;
+			if ( vpuCodecType != NX_JPEG_DEC )
+			{						
+				seqSize = 0;
+
+				if( vpuCodecType != NX_HEVC_DEC )
+					size = 0;
+				if ( (vpuCodecType == NX_VC1_DEC) && (streamBuffer[0] == 0) && (streamBuffer[1] == 0) && (streamBuffer[2] == 1) )
+					continue;
+			}
 		}
 
 		memset(&decIn, 0, sizeof(decIn));
@@ -400,26 +412,55 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			if ( fpOut )
 			{
 				int32_t h;
-				uint8_t *pbyImg = (uint8_t *)(hDispBuff->luVirAddr);
+				uint8_t *pbyImg = (uint8_t *)(decOut.outImg.luVirAddr);
+				int32_t cWidth, cHeight;
 
-				for(h=0 ; h<hDispBuff->imgHeight ; h++)
+				switch( decOut.outImg.fourCC )
 				{
-					fwrite(pbyImg, 1, h<hDispBuff->imgWidth, fpOut);
-					pbyImg += hDispBuff->luStride;
+					case FOURCC_MVS0:
+						cWidth  = decOut.width >> 1;
+						cHeight = decOut.height >> 1;
+						break;
+					case FOURCC_MVS2:
+					case FOURCC_H422:
+						cWidth  = decOut.width >> 1;
+						cHeight = decOut.height;
+						break;
+					case FOURCC_V422:
+						cWidth  = decOut.width;
+						cHeight = decOut.height >> 1;
+						break;
+					case FOURCC_MVS4:
+						cWidth  = decOut.width;
+						cHeight = decOut.height;
+						break;
+					case FOURCC_GRAY:
+						cWidth  = 0;
+						cHeight = 0;
+						break;
+					default:
+						printf("Unknown fourCC type.\n");
+						break;
 				}
 
-				pbyImg = (uint8_t *)(hDispBuff->cbVirAddr);
-				for(h=0 ; h<hDispBuff->imgHeight/2 ; h++)
+				for(h=0 ; h<decOut.height ; h++)
 				{
-					fwrite(pbyImg, 1, hDispBuff->imgWidth/2, fpOut);
-					pbyImg += hDispBuff->cbStride;
+					fwrite(pbyImg, 1, decOut.width, fpOut);
+					pbyImg += decOut.outImg.luStride;
 				}
 
-				pbyImg = (uint8_t *)(hDispBuff->crVirAddr);
-				for(h=0 ; h<hDispBuff->imgHeight/2 ; h++)
+				pbyImg = (uint8_t *)(decOut.outImg.cbVirAddr);
+				for(h=0 ; h<cHeight ; h++)
 				{
-					fwrite(pbyImg, 1, hDispBuff->imgWidth/2, fpOut);
-					pbyImg += hDispBuff->crStride;
+					fwrite(pbyImg, 1, cWidth, fpOut);
+					pbyImg += decOut.outImg.cbStride;
+				}
+
+				pbyImg = (uint8_t *)(decOut.outImg.crVirAddr);
+				for(h=0 ; h<cHeight ; h++)
+				{
+					fwrite(pbyImg, 1, cWidth, fpOut);
+					pbyImg += decOut.outImg.crStride;
 				}
 			}
 

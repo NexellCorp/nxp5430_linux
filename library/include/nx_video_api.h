@@ -195,6 +195,10 @@ typedef struct tNX_VID_DEC_IN{
 	int32_t strmSize;                       // A compressed stream's size
 	uint64_t timeStamp;                     // Time stamp
 	int32_t eos;
+
+	// for JPEG Decoder
+	int32_t downScaleWidth;                 // 0 : No scaling, 1 : 1/2 down scaling, 2 : 1/4 down scaling, 3 : 1/8 down scaling
+	int32_t downScaleHeight;                // 0 : No scaling, 1 : 1/2 down scaling, 2 : 1/4 down scaling, 3 : 1/8 down scaling
 }NX_VID_DEC_IN;
 
 typedef struct tNX_VID_DEC_OUT{
@@ -241,6 +245,9 @@ typedef struct tNX_VID_SEQ_IN{
 
 	// for MPEG2 Decoder
 	int32_t enableUserData;
+
+	// for JPEG Decoder
+	int32_t thumbnailMode;                  // 0 : jpeg mode, 1 : thumbnail mode
 }NX_VID_SEQ_IN;
 
 typedef struct tNX_VID_SEQ_OUT{
@@ -264,6 +271,10 @@ typedef struct tNX_VID_SEQ_OUT{
 	int32_t vp8ScaleHeight;
 
 	int32_t unsupportedFeature;             // Flag to inform the feature is unsupported in NX Codec
+
+	int32_t imgFourCC;                      // FourCC according to decoded image type (ASCII hexadecimal representation of four characters)
+	int32_t thumbnailWidth;                 // Width of thumbnail image
+	int32_t thumbnailHeight;                // Height of thumbnail image
 }NX_VID_SEQ_OUT;
 
 typedef struct tNX_VID_VERSION{
