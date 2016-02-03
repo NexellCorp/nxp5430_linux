@@ -120,6 +120,8 @@ DISPLAY_HANDLE NX_DspInit( DISPLAY_INFO *pDspInfo )
 		return NULL;
 	}
 
+	v4l2_streamoff( hPrivate, mlcId );
+
 #ifndef DISABLE_PORT_CONFIG
 	if( pDspInfo->port == DISPLAY_PORT_HDMI ) {
 		result = v4l2_link(hPrivate, mlcPin, nxp_v4l2_hdmi);
@@ -219,6 +221,15 @@ void NX_DspClose( DISPLAY_HANDLE hDisplay )
 			v4l2_streamoff( hDisplay->hPrivate, hDisplay->mlcId );
 			hDisplay->streamOnFlag = 0;
 		}
+		
+		if( hDisplay->displayInfo.port == DISPLAY_PORT_HDMI ) {
+			v4l2_unlink( hDisplay->hPrivate, hDisplay->mlcId, nxp_v4l2_hdmi );
+		}
+
+		if( hDisplay->displayInfo.port == DISPLAY_PORT_TVOUT ) {
+			v4l2_unlink( hDisplay->hPrivate, hDisplay->mlcId, nxp_v4l2_tvout );
+		}
+
 		v4l2_exit( hDisplay->hPrivate );
 		
 		if( hDisplay ) free(hDisplay);
