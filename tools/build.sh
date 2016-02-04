@@ -12,7 +12,7 @@ if [ $# -ge 1 ]; then
 else
 	echo "Please specify your board name."
 	echo "Usage : ./platform/"${CHIPSET_NAME}"/tools/build.sh [BOARD_NAME] [BOOT_DEV]"
-	echo "Supported board : drone/svt"
+	echo "Supported board : drone/svt/avn_ref"
 	echo "Avaliable boot device : sdmmc/spi"
 	exit 0
 fi
@@ -20,12 +20,16 @@ fi
 if [ $1 == "drone" ]; then
 	echo ""
 else
-	if [ $1 == "svt" ]; then
+    if [ $1 == "avn_ref" ]; then
 		echo ""
 	else
-		echo "Not supported board!"
-		echo "Supported board : drone/svt"
-		exit 0
+		if [ $1 == "svt" ]; then
+			echo ""
+		else
+			echo "Not supported board!"
+			echo "Supported board : drone/svt/avn_ref"
+			exit 0
+		fi
 	fi
 fi
 
@@ -546,6 +550,20 @@ function build_fastboot_boot()
 	popd > /dev/null
 }
 
+function complete_fastboot_reboot()
+{
+    echo '#########################################################'
+    echo '#'
+    echo '# fastboot reboot'
+    echo '#'
+    echo '#########################################################'
+
+    sleep 1.5
+    pushd . > /dev/null
+    sudo fastboot reboot
+    popd > /dev/null
+}
+
 function build_fastboot_system()
 {
 	echo ''
@@ -702,6 +720,7 @@ if [ ${BOARD_NAME} != "build_exit" ]; then
 		echo "     62. fastboot bootloader(u-boot)"
 		echo "     63. fastboot boot(kernel)"
 		echo "     64. fastboot system(rootfs)"
+		echo "     65. fastboot reboot"
 		echo " "
 		echo "--------------------------------------------------------------------"
 		echo "  0. Exit"
@@ -780,7 +799,8 @@ if [ ${BOARD_NAME} != "build_exit" ]; then
 				build_fastboot_2ndboot
 				build_fastboot_uboot
 				build_fastboot_boot
-				build_fastboot_system					;;
+				build_fastboot_system					
+				complete_fastboot_reboot                ;;
 
 				61)	CMD_V_BUILD_NUM=
 					build_fastboot_2ndboot				;;
@@ -790,6 +810,8 @@ if [ ${BOARD_NAME} != "build_exit" ]; then
 					build_fastboot_boot				;;
 				64)	CMD_V_BUILD_NUM=
 					build_fastboot_system				;;
+				65) CMD_V_BUILD_NUM=
+                    complete_fastboot_reboot        ;;
 
 			#------------------------------------------------------------------------------------------------
 			0)	CMD_V_BUILD_NUM=0
