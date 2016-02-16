@@ -1,0 +1,33 @@
+* Linux BSP Top Directory Architecture
+
+├── apps       : application directory for each H/W module test.
+├── boot       : Boot related directory.(NSIH & Second Boot)
+├── doc        : document directory
+├── library    : library directory.
+├── modules    : module device dirver directory.
+└── Solution   : Solution application directory.(BlackBox & Media Player)
+
+
+* "apps" directory Architecture
+
+apps
+├── v4l2_test           : v4l2 module test application.
+└── vpu_test2           : video en/decoding test application.(support Android)
+
+
+* "library" directory Architecture
+
+library
+├── include                   : common library include directory
+├── lib                       : library src output directory
+└── src
+    ├── libcec                : CEC Library.
+    ├── libhevc               : Android Lollipop HEVC Decoder Library.
+    ├── libion                : ION Memory Allocator Library.
+    ├── libnxdeinterlace      : S/W Deinterlace Wrapper(See COPYING file)
+    ├── libnxgraphictools     : 3D Graphic Library.
+    ├── libnxmalloc           : Video Memory Allocatior Library.
+    ├── libnxscaler           : Fine Scaler Library.
+    ├── libnxuevent           : uevent Handling Library.
+    ├── libnxv4l2             : V4L2 Wrapper Libarary for Display & Camera Capture.
+    └── libnxvpu              : Video En/Decoder ioctl Wrapper Library.
