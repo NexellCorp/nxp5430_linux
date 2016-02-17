@@ -6,22 +6,9 @@ DIR		:=
 ######################################################################
 # Build options
 
-# Graphic library
-DIR += libnxgraphictools
+IR += v4l2_test
+DIR += vpu_test2
 
-# Multi Media Libraries
-DIR += libnxdeinterlace
-DIR += libion
-DIR += libnxmalloc
-DIR += libnxv4l2
-DIR += libnxvpu
-DIR += libnxscaler
-
-# I/O Wrapper
-DIR += libcec
-
-# Etc Libraries
-DIR += libnxuevent
 
 ######################################################################
 # Build

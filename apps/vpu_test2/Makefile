@@ -46,6 +46,8 @@ all:	\
 $(TARGET):	depend $(OBJS)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(OBJS) -o $@ $(LIBRARY)
 
+install:
+
 clean:
 	rm -f $(OBJS) $(TARGET) .depend
 
