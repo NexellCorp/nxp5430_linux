@@ -153,7 +153,14 @@ MP_RESULT	NX_MPSetDspCrop( MP_HANDLE hMp, int32_t iTrack, MP_DSP_RECT *pRect );
 MP_RESULT	NX_MPSetDspPosition( MP_HANDLE hMp, int32_t iTrack, MP_DSP_RECT *pRect );
 MP_RESULT	NX_MPSetVideoLayerPriority( MP_HANDLE hMp, int32_t iTrack, int32_t iModule, int32_t iPriority );
 
+//Dual Display
 #ifdef ANDROID
+// iDspMode ==> 0:Default, (1:Only LCD, 2:Only Hdmi, 3:Only Tvout, 4:LCD+HDMI, 5:LCD+TVOUT)==>Dual Display
+MP_RESULT	NX_MPSetDspMode(MP_HANDLE hMp, int32_t iTrack, MP_DSP_CONFIG *pInfo, int32_t iDspMode );
+#endif
+
+#ifdef ANDROID
+MP_RESULT	NX_MPSetAudioStreamType( MP_HANDLE hMp, int32_t iStreamType );
 #else
 MP_RESULT 	NX_MPSetVolume( MP_HANDLE hMp, int32_t iLevel );		// 0% ~ 100%
 #endif

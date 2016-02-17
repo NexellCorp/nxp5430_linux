@@ -1199,7 +1199,7 @@ int32_t main( int32_t argc, char *argv[] )
 	printf(" Player based Filter                             \n");
 	printf(" -. Library Version : %d.%d.%d                   \n", iMajorVersion, iMinorVersion, iRevisionVersion);
 	printf(" -. Build Time      : %s, %s                     \n", __TIME__, __DATE__);
-	printf(" -. Author          : SW3 Team.                  \n");
+	printf(" -. Author          : SW2 Team.                  \n");
 	printf("##################################################################################\n");
 
 	NX_MPOpen( &AppData.hPlayer, &cbEventCallback, &AppData );
