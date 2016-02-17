@@ -51,6 +51,8 @@ install:
 clean:
 	rm -f $(OBJS) $(TARGET) .depend
 
+distclean:
+
 #########################################################################
 # Dependency
 ifeq (.depend,$(wildcard .depend))

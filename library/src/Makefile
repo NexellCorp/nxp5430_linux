@@ -6,9 +6,6 @@ DIR		:=
 ######################################################################
 # Build options
 
-# Graphic library
-DIR += libnxgraphictools
-
 # Multi Media Libraries
 DIR += libnxdeinterlace
 DIR += libion
@@ -16,6 +13,9 @@ DIR += libnxmalloc
 DIR += libnxv4l2
 DIR += libnxvpu
 DIR += libnxscaler
+
+# Graphic library
+DIR += libnxgraphictools
 
 # I/O Wrapper
 DIR += libcec
