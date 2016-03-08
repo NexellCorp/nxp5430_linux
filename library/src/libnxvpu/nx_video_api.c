@@ -1678,6 +1678,89 @@ VID_ERROR_E NX_VidDecFlush( NX_VID_DEC_HANDLE hDec )
 
 		DecoderFlushDispInfo( hDec );
 	}
+#ifdef HEVC_DEC	
+	else
+	{
+		int32_t i;
+		NX_VID_MEMORY_HANDLE hRaminBuffer = NULL;;
+
+		//
+		//	HEVC Flush
+		//
+		IV_API_CALL_STATUS_T status;
+		ivd_ctl_flush_ip_t s_video_flush_ip;
+		ivd_ctl_flush_op_t s_video_flush_op;
+
+		ivd_video_decode_ip_t s_video_decode_ip;
+		ivd_video_decode_op_t s_video_decode_op;
+
+		s_video_flush_ip.e_cmd = IVD_CMD_VIDEO_CTL;
+		s_video_flush_ip.e_sub_cmd = IVD_CMD_CTL_FLUSH;
+		s_video_flush_ip.u4_size = sizeof(ivd_ctl_flush_ip_t);
+		s_video_flush_op.u4_size = sizeof(ivd_ctl_flush_op_t);
+		
+		/* Set the decoder in Flush mode, subsequent decode() calls will flush */
+		status = ihevcd_cxa_api_function( hDec->codec_obj, (void *)&s_video_flush_ip, (void *)&s_video_flush_op );
+
+		if (status != IV_SUCCESS) {
+			NX_ErrMsg( ("Error in setting the decoder in flush mode: (%d) 0x%x\n", 
+				status, s_video_flush_op.u4_error_code) );
+			return -1;
+		}
+
+		//	
+		//	Dummy Decoding
+		//
+		for( i = 0; i < hDec->numFrameBuffers; i++ )
+		{
+			if( hDec->validFrame[ i ] == 0 )
+			{
+				hRaminBuffer = hDec->hFrameBuffer[i];
+				break;
+			}
+		}
+
+		if( hRaminBuffer == NULL )
+		{
+			NX_ErrMsg( ("Error, Valid Remain Buffer.\n") );
+			hRaminBuffer = hDec->hFrameBuffer[0];
+		}
+
+		while( 1 )
+		{
+			s_video_decode_ip.e_cmd = IVD_CMD_VIDEO_DECODE;
+			s_video_decode_ip.u4_ts = 0;
+			s_video_decode_ip.pv_stream_buffer = NULL;
+			s_video_decode_ip.u4_num_Bytes = 0;
+			s_video_decode_ip.u4_size = sizeof(ivd_video_decode_ip_t);
+
+			s_video_decode_ip.s_out_buffer.u4_min_out_buf_size[0] = hRaminBuffer->luStride * hRaminBuffer->imgHeight;
+			s_video_decode_ip.s_out_buffer.u4_min_out_buf_size[1] = hRaminBuffer->cbStride * hRaminBuffer->imgHeight/2;
+			s_video_decode_ip.s_out_buffer.u4_min_out_buf_size[2] = hRaminBuffer->crStride * hRaminBuffer->imgHeight/2;
+			s_video_decode_ip.s_out_buffer.pu1_bufs[0] = (uint8_t *)hRaminBuffer->luVirAddr;
+			s_video_decode_ip.s_out_buffer.pu1_bufs[1] = (uint8_t *)hRaminBuffer->cbVirAddr;
+			s_video_decode_ip.s_out_buffer.pu1_bufs[2] = (uint8_t *)hRaminBuffer->crVirAddr;
+			s_video_decode_ip.s_out_buffer.u4_num_bufs = 3;
+
+			s_video_decode_op.u4_size = sizeof(ivd_video_decode_op_t);
+
+			ihevcd_cxa_api_function( hDec->codec_obj, (void *)&s_video_decode_ip, (void *)&s_video_decode_op);
+			if( 0 == s_video_decode_op.u4_output_present )
+				break;
+		}
+
+		//
+		//	Reset ValidFrame
+		//
+		for ( i = 0 ; i < hDec->numFrameBuffers ; i++ )
+		{
+			if( hDec->validFrame[ i ] )
+			{
+				hDec->validFrame[ i ] = 0;
+			}
+		}
+	}
+#endif
 
 	FUNC_OUT();
 	return VID_ERR_NONE;
@@ -3369,7 +3452,7 @@ static VID_ERROR_E NX_HevcDecDecodeFrame( NX_VID_DEC_HANDLE hDec, NX_VID_DEC_IN 
 {
     ivd_video_decode_ip_t s_video_decode_ip;
     ivd_video_decode_op_t s_video_decode_op;
-	int32_t iIdx, i;
+	int32_t iIdx=0, i;
 
 	if ( pstDecIn->eos == 1 )
 	{
