@@ -40,6 +40,7 @@ install:
 
 distclean: clean
 	rm -f $(LIB_INSTALL)/$(TARGET)
+	rm -f ../../include/libcec.h
 
 #########################################################################
 # Dependency
