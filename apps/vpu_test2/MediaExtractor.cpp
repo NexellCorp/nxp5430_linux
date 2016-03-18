@@ -235,6 +235,8 @@ static int PasreAVCStream( AVPacket *pkt, int nalLengthSize, unsigned char *buff
 	int inSize = pkt->size;
 	int pos=0;
 
+	(void) outBufSize;
+
 	//	'avcC' format
 	do{
 		nalLength = 0;
@@ -289,6 +291,8 @@ static int MakeRvStream( AVPacket *pkt, AVStream *stream, unsigned char *buffer,
 //	int has_st_code = 0;
 	int size;
 
+	(void) outBufSize;
+
 	cSlice = p[0] + 1;
 	nSlice =  pkt->size - 1 - (cSlice * 8);
 	size = 20 + (cSlice*8);
@@ -328,6 +332,7 @@ static int MakeVC1Stream( AVPacket *pkt, AVStream *stream, unsigned char *buffer
 {
 	int size=0;
 	unsigned char *p = pkt->data;
+	(void) outBufSize;
 
 	if( stream->codec->codec_id == CODEC_ID_VC1 )
 	{
@@ -373,6 +378,7 @@ static int MakeDIVX3Stream( AVPacket *pkt, AVStream *stream, unsigned char *buff
 {
 	int size = pkt->size;
 	unsigned int tag = stream->codec->codec_tag;
+	(void) outBufSize;
 	if( tag == MKTAG('D', 'I', 'V', '3') || tag == MKTAG('M', 'P', '4', '3') ||
 		tag == MKTAG('M', 'P', 'G', '3') || tag == MKTAG('D', 'V', 'X', '3') || tag == MKTAG('A', 'P', '4', '1') )
 	{
@@ -387,6 +393,8 @@ static int MakeDIVX3Stream( AVPacket *pkt, AVStream *stream, unsigned char *buff
 
 static int MakeVP8Stream( AVPacket *pkt, AVStream *stream, unsigned char *buffer, int outBufSize )
 {
+	(void) stream;
+	(void) outBufSize;
 	PUT_LE32(buffer,pkt->size);		//	frame_chunk_len
 	PUT_LE32(buffer,0);				//	time stamp
 	PUT_LE32(buffer,0);
@@ -413,9 +421,9 @@ int isIdrFrame( unsigned char *buf, int size )
 
 
 CMediaReader::CMediaReader()
-	: m_pFormatCtx(NULL)
+	: m_VideoStream(NULL)
+	, m_pFormatCtx(NULL)
 	, m_VideoStreamIndex(-1)
-	, m_VideoStream(NULL)
 	, m_pVideoCodec(NULL)
 	, m_pTheoraParser(NULL)
 	, m_AudioStreamIndex(-1)
@@ -729,11 +737,11 @@ int32_t CMediaReader::ReadStream( int32_t type, uint8_t *buf, int32_t *size, int
 	return -1;
 }
 
-#ifdef ANDROID
-#ifndef LOLLIPOP
+#ifndef INT64_MIN
 #define INT64_MIN		0x8000000000000000LL
-#define INT64_MAX		0x7fffffffffffffffLL
 #endif
+#ifndef INT64_MAX
+#define INT64_MAX		0x7fffffffffffffffLL
 #endif
 
 int32_t CMediaReader::SeekStream( int64_t seekTime )

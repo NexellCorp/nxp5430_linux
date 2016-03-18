@@ -150,6 +150,9 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 
 		if( !bInit )
 		{
+
+			HexDump( streamBuffer, ((size>64) ? 64 : 1) );
+
 			memset( &seqIn, 0, sizeof(seqIn) );
 			seqIn.addNumBuffers = 4;
 			seqIn.enablePostFilter = 0;
@@ -223,7 +226,7 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 #endif
 
 			printf("<<<<<<<<<<< Init In >>>>>>>>>>>>>> \n");
-			printf("seqInfo = %x \n", seqIn.seqInfo);
+			printf("seqInfo = %p \n", seqIn.seqInfo);
 			printf("seqSize = %d(0x%x) \n", seqIn.seqSize, seqIn.seqSize);
 			{
 				int32_t i;
@@ -238,7 +241,7 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			}
 			printf("width = %d \n", seqIn.width);
 			printf("heigh = %d \n", seqIn.height);
-			printf("pMemHandle = %x \n", seqIn.pMemHandle);
+			printf("pMemHandle = %p \n", seqIn.pMemHandle);
 			printf("numBuffers = %d \n", seqIn.numBuffers);
 			printf("addNumBuffers = %d \n", seqIn.addNumBuffers);
 			printf("disableOutReorder = %d \n", seqIn.disableOutReorder);
@@ -413,7 +416,7 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 			{
 				int32_t h;
 				uint8_t *pbyImg = (uint8_t *)(decOut.outImg.luVirAddr);
-				int32_t cWidth, cHeight;
+				int32_t cWidth=0, cHeight=0;
 
 				switch( decOut.outImg.fourCC )
 				{

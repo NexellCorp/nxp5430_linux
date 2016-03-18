@@ -475,7 +475,7 @@ static int32_t VpuCamEncMain( CODEC_APP_DATA *pAppData )
 
 		{
 			float TotalBps = (float)((StrmTotalSize * 8 * pAppData->fpsNum / pAppData->fpsDen) / (frameCnt * 1024));
-			printf("[Summary]Bitrate = %3fKBps(%2.f%), Frame Count = %d \n", TotalBps, TotalBps * 100 / pAppData->kbitrate, frameCnt );
+			printf("[Summary]Bitrate = %3fKBps(%2.f %%), Frame Count = %d \n", TotalBps, TotalBps * 100.f / pAppData->kbitrate, frameCnt );
 		}
 	}
 
@@ -752,7 +752,7 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 
 				if ( fdRecon )
 				{
-					if ( encOut.width == encOut.ReconImg.luStride )
+					if ( encOut.width == (int32_t)encOut.ReconImg.luStride )
 					{
 						fwrite( (void *)encOut.ReconImg.luVirAddr, 1, encOut.width * encOut.height, fdRecon );
 						fwrite( (void *)encOut.ReconImg.cbVirAddr, 1, encOut.width * encOut.height / 4, fdRecon );
@@ -790,7 +790,7 @@ static int32_t VpuEncPerfMain( CODEC_APP_DATA *pAppData )
 
 		{
 			float TotalBps = (float)((StrmTotalSize * 8 * pAppData->fpsNum / pAppData->fpsDen) / (frameCnt * 1024));
-			printf("[Summary]Bitrate = %.3fKBps(%.2f%), PSNR = %.3fdB, Frame Count = %d \n", TotalBps, TotalBps * 100 / pAppData->kbitrate, (PSNRSum / frameCnt), frameCnt );
+			printf("[Summary]Bitrate = %.3fKBps(%.2f %%), PSNR = %.3fdB, Frame Count = %d \n", TotalBps, TotalBps * 100 / pAppData->kbitrate, (PSNRSum / frameCnt), frameCnt );
 		}
 	}
 

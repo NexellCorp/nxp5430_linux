@@ -5,6 +5,7 @@
 
 uint64_t NX_GetTickCount( void );
 void dumpdata( void *data, int32_t len, const char *msg );
+void HexDump( const void *data, int32_t size );
 
 
 //	Encoder Application Data

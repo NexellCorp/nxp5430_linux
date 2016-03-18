@@ -118,6 +118,7 @@ int32_t CNX_AndroidRenderer::GetBuffers( int32_t iNumBuf, int32_t iImgWidth, int
 
 int32_t CNX_AndroidRenderer::DspQueueBuffer( NX_VID_MEMORY_HANDLE hHandle, int32_t index )
 {
+	(void) hHandle;
 	m_YuvWindow->queueBuffer(m_YuvWindow.get(), m_pYuvANBuffer[index], -1);
 	return 0;
 }
@@ -125,6 +126,8 @@ int32_t CNX_AndroidRenderer::DspQueueBuffer( NX_VID_MEMORY_HANDLE hHandle, int32
 int32_t CNX_AndroidRenderer::DspDequeueBuffer( NX_VID_MEMORY_HANDLE *hHandle, int32_t *index )
 {
     ANativeWindowBuffer *yuvTempBuffer;
+	(void) hHandle;
+	(void) index;
 	native_window_dequeue_buffer_and_wait(m_YuvWindow.get(), &yuvTempBuffer);
 	return 0;
 }
