@@ -15,7 +15,6 @@ DIR += vpu_test2
 all:
 	@for dir in $(DIR); do			\
 	make -C $$dir || exit $?;		\
-	make -C $$dir install; 			\
 	done
 
 clean:
