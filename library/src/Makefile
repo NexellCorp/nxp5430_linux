@@ -11,6 +11,7 @@ DIR += libnxdeinterlace
 DIR += libion
 DIR += libnxmalloc
 DIR += libnxv4l2
+DIR += libhevc
 DIR += libnxvpu
 DIR += libnxscaler
 

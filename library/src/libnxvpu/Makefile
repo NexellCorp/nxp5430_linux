@@ -8,12 +8,12 @@ INC_INSTALL	:= 	../../include
 ######################################################################
 # Build options
 INCLUDE += -I./ -I../../include -I$(KERNDIR)/include
-#INCLUDE	+= -I../libhevc/common -I../libhevc/decoder
+INCLUDE	+= -I../libhevc/common -I../libhevc/decoder
 
 LIBRARY += -L../../lib/
 LIBRARY += -lnxvmem
 LIBRARY += -lnxvidrc
-#LIBRARY += -lhevcdec
+LIBRARY += -lhevcdec
 
 ######################################################################
 # Target
@@ -21,7 +21,7 @@ COBJS  	:=
 COBJS  	+= parser_vld.o nx_video_api.o
 CPPOBJS	:=  
 
-#CFLAGS	+= -DHEVC_DEC
+CFLAGS	+= -DHEVC_DEC
 CFLAGS	+= -fPIC
 
 LDFLAGS := -Wl,-Bsymbolic
