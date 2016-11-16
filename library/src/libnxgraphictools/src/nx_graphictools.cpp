@@ -8,7 +8,7 @@
 #include <nx_fourcc.h>
 #include <nx_alloc_mem.h>
 
-#include "vr_deinterlace.h"
+#include "vr_yuv_render.h"
 #include "nx_graphictools.h"
 
 #include "NX_GTService.h"
@@ -162,7 +162,7 @@ NX_GT_RGB2YUV_HANDLE NX_GTRgb2YuvOpen( int srcWidth, int srcHeight, int dstWidth
 	paramOpen.dstWidth			= dstWidth;
 	paramOpen.dstHeight			= dstHeight;
 	paramOpen.maxInOutBufSize	= numOutBuf;
-	NX_GTServiceCommand( gstService, CT_SERVICE_ID_RGB2YUV, GT_SERVICE_CMD_OPEN, &paramOpen );
+	NX_GTServiceCommand( gstService, GT_SERVICE_ID_RGB2YUV, GT_SERVICE_CMD_OPEN, &paramOpen );
 	handle  = (NX_GT_RGB2YUV_HANDLE)paramOpen.handle;
 	return handle;
 }
@@ -173,14 +173,14 @@ int32_t NX_GTRgb2YuvDoConvert( NX_GT_RGB2YUV_HANDLE handle, int inputIonFd, NX_V
 	paramDo.handle = handle;
 	paramDo.pInBuf	= (void*)inputIonFd;
 	paramDo.pOutBuf	= pOutBuf;
-	return NX_GTServiceCommand( gstService, CT_SERVICE_ID_RGB2YUV, GT_SERVICE_CMD_DO, &paramDo );
+	return NX_GTServiceCommand( gstService, GT_SERVICE_ID_RGB2YUV, GT_SERVICE_CMD_DO, &paramDo );
 }
 
 void NX_GTRgb2YuvClose( NX_GT_RGB2YUV_HANDLE handle )
 {
 	NX_GT_PARAM_CLOSE paramClose;
 	paramClose.handle = handle;
-	NX_GTServiceCommand( gstService, CT_SERVICE_ID_RGB2YUV, GT_SERVICE_CMD_CLOSE, &paramClose );
+	NX_GTServiceCommand( gstService, GT_SERVICE_ID_RGB2YUV, GT_SERVICE_CMD_CLOSE, &paramClose );
 
 	pthread_mutex_lock(&gstInstMutex);
 	if( gstInstRefCnt > 0)
@@ -218,7 +218,7 @@ NX_GT_YUV2RGB_HANDLE NX_GTYuv2RgbOpen( int srcWidth, int srcHeight, int dstWidth
 	paramOpen.dstWidth			= dstWidth;
 	paramOpen.dstHeight			= dstHeight;
 	paramOpen.maxInOutBufSize	= numOutBuf;
-	NX_GTServiceCommand( gstService, CT_SERVICE_ID_YUV2RGB, GT_SERVICE_CMD_OPEN, &paramOpen );
+	NX_GTServiceCommand( gstService, GT_SERVICE_ID_YUV2RGB, GT_SERVICE_CMD_OPEN, &paramOpen );
 	handle  = (NX_GT_YUV2RGB_HANDLE)paramOpen.handle;
 	return handle;
 }
@@ -229,14 +229,70 @@ int32_t NX_GTYuv2RgbDoConvert( NX_GT_YUV2RGB_HANDLE handle, NX_VID_MEMORY_INFO *
 	paramDo.handle = handle;
 	paramDo.pInBuf	= pInBuf;
 	paramDo.pOutBuf	= (void*)outMemIonFd;
-	return NX_GTServiceCommand( gstService, CT_SERVICE_ID_YUV2RGB, GT_SERVICE_CMD_DO, &paramDo );
+	return NX_GTServiceCommand( gstService, GT_SERVICE_ID_YUV2RGB, GT_SERVICE_CMD_DO, &paramDo );
 }
 
 void NX_GTYuv2RgbClose( NX_GT_YUV2RGB_HANDLE handle )
 {
 	NX_GT_PARAM_CLOSE paramClose;
 	paramClose.handle = handle;
-	NX_GTServiceCommand( gstService, CT_SERVICE_ID_YUV2RGB, GT_SERVICE_CMD_CLOSE, &paramClose );
+	NX_GTServiceCommand( gstService, GT_SERVICE_ID_YUV2RGB, GT_SERVICE_CMD_CLOSE, &paramClose );
+
+	pthread_mutex_lock(&gstInstMutex);
+	if( gstInstRefCnt > 0)
+	{
+		gstInstRefCnt--;
+		if( gstInstRefCnt==0 )
+		{
+			NX_GTServiceStop( gstService );
+			//NX_GTServiceDeinit( gstService );
+		}
+	}
+	pthread_mutex_unlock(&gstInstMutex);
+}
+
+//
+//		Noise Redunction Filter
+//
+NX_GT_NRFILTER_HANDLE NX_GTNRFilterOpen( int srcWidth, int srcHeight, int dstWidth, int dstHeight, int numOutBuf )
+{
+	NX_GT_NRFILTER_HANDLE handle = NULL;
+	NX_GT_PARAM_OPEN	paramOpen;
+
+	pthread_mutex_lock(&gstInstMutex);
+	if( gstInstRefCnt == 0 )
+	{
+		gstService = NX_GTServiceInit();
+		NX_GTServiceStart( gstService );
+	}
+	gstInstRefCnt ++;
+	pthread_mutex_unlock(&gstInstMutex);
+
+	paramOpen.srcWidth			= srcWidth;
+	paramOpen.srcHeight			= srcHeight;
+	paramOpen.dstWidth			= dstWidth;
+	paramOpen.dstHeight			= dstHeight;
+	paramOpen.maxInOutBufSize	= numOutBuf;
+	NX_GTServiceCommand( gstService, GT_SERVICE_ID_FILTER_NR, GT_SERVICE_CMD_OPEN, &paramOpen );
+	handle  = (NX_GT_NRFILTER_HANDLE)paramOpen.handle;
+	return handle;
+}
+
+int32_t NX_GTNRFilterDoFiltering( NX_GT_NRFILTER_HANDLE handle, NX_VID_MEMORY_INFO *pInBuf, NX_VID_MEMORY_INFO *pOutBuf, float edgeParam )
+{
+	NX_GT_PARAM_DO paramDo;
+	paramDo.handle = handle;
+	paramDo.pInBuf	= pInBuf;
+	paramDo.pOutBuf	= pOutBuf;
+	paramDo.options[0] = (uint32_t)edgeParam;
+	return NX_GTServiceCommand( gstService, GT_SERVICE_ID_FILTER_NR, GT_SERVICE_CMD_DO, &paramDo );
+}
+
+void NX_GTNRFilterClose( NX_GT_NRFILTER_HANDLE handle )
+{
+	NX_GT_PARAM_CLOSE paramClose;
+	paramClose.handle = handle;
+	NX_GTServiceCommand( gstService, GT_SERVICE_ID_FILTER_NR, GT_SERVICE_CMD_CLOSE, &paramClose );
 
 	pthread_mutex_lock(&gstInstMutex);
 	if( gstInstRefCnt > 0)

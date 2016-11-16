@@ -7,6 +7,7 @@ typedef struct NX_GT_DEINT_INFO  *NX_GT_DEINT_HANDLE;
 typedef struct NX_GT_SCALER_INFO *NX_GT_SCALER_HANDLE;
 typedef struct NX_GT_RGB2YUV_INFO *NX_GT_RGB2YUV_HANDLE;
 typedef struct NX_GT_YUV2RGB_INFO *NX_GT_YUV2RGB_HANDLE;
+typedef struct NX_GT_NRFILTER_INFO *NX_GT_NRFILTER_HANDLE;
 
 
 #ifdef __cplusplus
@@ -64,6 +65,17 @@ void NX_GTRgb2YuvClose( NX_GT_RGB2YUV_HANDLE handle );
 NX_GT_YUV2RGB_HANDLE NX_GTYuv2RgbOpen( int srcWidth, int srcHeight, int dstWidth, int dstHeight, int numOutBuf );
 int32_t NX_GTYuv2RgbDoConvert( NX_GT_YUV2RGB_HANDLE handle, NX_VID_MEMORY_INFO *pOutBuf, int inMemIonFd );
 void NX_GTYuv2RgbClose( NX_GT_YUV2RGB_HANDLE handle );
+
+
+//
+//		Noise Reduction Filter Using 3D Accelerator
+//				( YUV NR Filter )
+//
+//		Usage : Open --> CSC --> Close
+//
+NX_GT_NRFILTER_HANDLE NX_GTNRFilterOpen( int srcWidth, int srcHeight, int dstWidth, int dstHeight, int numOutBuf );
+int32_t NX_GTNRFilterDoFiltering( NX_GT_NRFILTER_HANDLE handle, NX_VID_MEMORY_INFO *pInBuf, NX_VID_MEMORY_INFO *pOutBuf, float edgeParam );
+void NX_GTNRFilterClose( NX_GT_NRFILTER_HANDLE handle );
 
 #ifdef __cplusplus
 };

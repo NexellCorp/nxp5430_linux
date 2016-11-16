@@ -26,7 +26,7 @@ CPPFLAGS	+= -DGL_GLEXT_PROTOTYPES -fPIC
 # Target
 COBJS		:=
 # Graphic Tools Engine
-CPPOBJS		:= src/vr_egl_runtime.o src/vr_deinterlace_shader.o src/vr_deinterlace.o
+CPPOBJS		:= src/vr_egl_runtime.o src/vr_shader.o src/vr_yuv_render.o
 # Graphic Tools Service
 CPPOBJS		+= src/NX_GTService.o src/NX_Queue.o src/NX_Semaphore.o
 # Graphic Tools Engine Wrapper

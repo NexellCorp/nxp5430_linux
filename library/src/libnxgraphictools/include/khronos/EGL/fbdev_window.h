@@ -55,6 +55,7 @@ typedef struct fbdev_pixmap
 	fbdev_pixmap_flags flags;
 	unsigned short *data;
 	unsigned int format; /* extra format information in case rgbal is not enough, especially for YUV formats */
+	int is_no_readback_proc; /* NEXELL_FEATURE_PIXMAP_EN */
 } fbdev_pixmap;
 
 #if MALI_USE_DMA_BUF

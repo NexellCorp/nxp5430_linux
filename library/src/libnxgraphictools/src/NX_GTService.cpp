@@ -27,12 +27,12 @@
 
 #include <nx_fourcc.h>
 
-#include "vr_deinterlace.h"
+#include "vr_yuv_render.h"
 #include "nx_graphictools.h"
 
 #include "dbgmsg.h"
 
-#define MAX_SERVICE_NUM		6
+#define MAX_SERVICE_NUM		7
 #define MAX_CMD_SIZE		MAX_SERVICE_NUM + 1
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +95,51 @@ static void mem_save_to_file(char* pbuf, const char *filename, unsigned int widt
 	printf("mem_save_to_file(0x%x, %dx%d)\n", bytes_size, width, height);
 	fflush(fp_deinterlace);		
 	fclose(fp_deinterlace);
+}
+
+
+
+
+//
+// 	EGL
+//
+EGLNativeDisplayType vrPlatformGetNativeDispay(void)
+{
+#ifdef VR_PLATFORM_DRM_USE
+	int fd = open("/dev/dri/card0", O_RDWR | FD_CLOEXEC);
+	gbm_dev = gbm_create_device(fd);
+	if (!gbm_dev) {
+		abort();
+	}
+	return (EGLNativeDisplayType)gbm_dev;
+#else
+	return EGL_DEFAULT_DISPLAY;
+#endif	
+}
+
+EGLNativeWindowType vrPlatformCreateNativeWindow(unsigned int uiWidth, unsigned int uiHeight)
+{
+#ifdef VR_PLATFORM_DRM_USE
+	EGLNativeWindowType platform_win= (EGLNativeWindowType)gbm_surface_create(gbm_dev, uiWidth, uiHeight, GBM_FORMAT_XRGB8888, GBM_BO_USE_RENDERING | GBM_BO_USE_SCANOUT);
+#else
+	VR_PLATFORM_WINDOW_STRUCT* platform_win = (VR_PLATFORM_WINDOW_STRUCT*)NX_MALLOC( sizeof( VR_PLATFORM_WINDOW_STRUCT ) );
+	if (!platform_win)
+	{
+		return NULL;
+	}
+	platform_win->width = uiWidth;
+	platform_win->height = uiHeight;
+	return (EGLNativeWindowType)platform_win;
+#endif	
+}
+
+void vrPlatformDestroyNativeWindow(EGLNativeWindowType platform_win)
+{
+#ifdef VR_PLATFORM_DRM_USE
+	gbm_surface_destroy((struct gbm_surface *)platform_win);
+#else
+	NX_FREE(platform_win);
+#endif	
 }
 
 
@@ -173,10 +218,10 @@ static int32_t GTServiceDeintDoDeinterlace(NX_GT_PARAM_DO *pParam)
 		{
 			if( 0 == handle->inputImage[i].luPhyAddr )
 			{
-				hInSurface = handle->hInSurface[i] = vrCreateDeinterlaceSource( pInBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pInBuf->privateDesc[0] );
+				hInSurface = handle->hInSurface[i] = nxGSurfaceCreateDeinterlaceSource( pInBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pInBuf->privateDesc[0] );
 				if( hInSurface == NULL )
 				{
-					if( hInSurface )		vrDestroyDeinterlaceSource( hInSurface );
+					if( hInSurface )		nxGSurfaceDestroyDeinterlaceSource( hInSurface );
 					ret = ERR_SURFACE_CREATE;
 					goto ErrorExit;
 				}
@@ -201,10 +246,10 @@ static int32_t GTServiceDeintDoDeinterlace(NX_GT_PARAM_DO *pParam)
 		{
 			if( 0 == handle->outputImage[i].luPhyAddr )
 			{
-				hOutSurface = handle->hOutSurface[i] = vrCreateDeinterlaceTarget( pOutBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pOutBuf->privateDesc[0], 0 );
+				hOutSurface = handle->hOutSurface[i] = nxGSurfaceCreateDeinterlaceTarget( pOutBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pOutBuf->privateDesc[0], 0 );
 				if( hOutSurface == NULL )
 				{
-					if( hOutSurface )	vrDestroyDeinterlaceTarget( hOutSurface, 0 );
+					if( hOutSurface )	nxGSurfaceDestroyDeinterlaceTarget( hOutSurface, 0 );
 					ret = ERR_SURFACE_CREATE;
 					goto ErrorExit;
 				}
@@ -221,7 +266,7 @@ static int32_t GTServiceDeintDoDeinterlace(NX_GT_PARAM_DO *pParam)
 	}
 
 	//	Deinterlace
-	vrRunDeinterlace(hOutSurface, hInSurface);
+	nxGSurfaceRunDeinterlace(hOutSurface, hInSurface);
 
 	return ret;
 
@@ -241,11 +286,11 @@ static void GTServiceDeintClose(NX_GT_PARAM_CLOSE *pParam)
 			{
 				if( handle->inputImage[i].luPhyAddr )
 				{
-					vrDestroyDeinterlaceSource( handle->hInSurface[i] );
+					nxGSurfaceDestroyDeinterlaceSource( handle->hInSurface[i] );
 				}
 				if( handle->outputImage[i].luPhyAddr )
 				{
-					vrDestroyDeinterlaceTarget( handle->hOutSurface[i], 0 );
+					nxGSurfaceDestroyDeinterlaceTarget( handle->hOutSurface[i], 0 );
 				}
 			}
 		}
@@ -328,7 +373,7 @@ static int32_t GTServiceSclDoScale(NX_GT_PARAM_DO *pParam )
 		{
 			if( 0 == handle->inputImage[i].luPhyAddr )
 			{
-				hInSurface = handle->hInSurface[i] = vrCreateScaleSource( pInBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pInBuf->privateDesc[0] );
+				hInSurface = handle->hInSurface[i] = nxGSurfaceCreateScaleSource( pInBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pInBuf->privateDesc[0] );
 				handle->inputImage[i] = *pInBuf;
 				break;
 			}
@@ -351,7 +396,7 @@ static int32_t GTServiceSclDoScale(NX_GT_PARAM_DO *pParam )
 		{
 			if( 0 == handle->outputImage[i].luPhyAddr )
 			{
-				hOutSurface = handle->hOutSurface[i] = vrCreateScaleTarget( pOutBuf->luStride, handle->dstWidth, handle->dstHeight, (NX_MEMORY_HANDLE)pOutBuf->privateDesc[0], 0 );
+				hOutSurface = handle->hOutSurface[i] = nxGSurfaceCreateScaleTarget( pOutBuf->luStride, handle->dstWidth, handle->dstHeight, (NX_MEMORY_HANDLE)pOutBuf->privateDesc[0], 0 );
 				handle->outputImage[i] = *pOutBuf;
 				break;
 			}
@@ -362,7 +407,7 @@ static int32_t GTServiceSclDoScale(NX_GT_PARAM_DO *pParam )
 	// static void mem_save_to_file(char* pbuf, const char *filename, unsigned int width, unsigned int height)
 	//mem_save_to_file( (char*)pInBuf->luVirAddr, "test", handle->srcWidth, handle->srcHeight);
 
-	vrRunScale(hOutSurface, hInSurface);
+	nxGSurfaceRunScale(hOutSurface, hInSurface);
 	//mem_save_to_file( (char*)pOutBuf->luVirAddr, "test", pOutBuf->luStride, handle->dstHeight);
 
 	return 0;
@@ -381,11 +426,11 @@ static void GTServiceSclClose(NX_GT_PARAM_CLOSE *pParam)
 			{
 				if( handle->inputImage[i].luPhyAddr )
 				{
-					vrDestroyScaleSource( handle->hInSurface[i] );
+					nxGSurfaceDestroyScaleSource( handle->hInSurface[i] );
 				}
 				if( handle->outputImage[i].luPhyAddr )
 				{
-					vrDestroyScaleTarget( handle->hOutSurface[i], 0 );
+					nxGSurfaceDestroyScaleTarget( handle->hOutSurface[i], 0 );
 				}
 			}
 		}
@@ -472,7 +517,7 @@ static int32_t GTServiceRgb2YuvDoConvert(NX_GT_PARAM_DO *pParam )
 		{
 			if( 0 == handle->inputFd[i] )
 			{
-				handle->hInSurface[i] = vrCreateCvt2YuvSource ( pOutBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_INFO*)&inputFd );
+				handle->hInSurface[i] = nxGSurfaceCreateCvt2YuvSource ( pOutBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_INFO*)&inputFd );
 				hInSurface = handle->hInSurface[i];
 				handle->inputFd[i] = inputFd;
 				break;
@@ -496,7 +541,7 @@ static int32_t GTServiceRgb2YuvDoConvert(NX_GT_PARAM_DO *pParam )
 		{
 			if( 0 == handle->outputImage[i].luPhyAddr )
 			{
-				handle->hOutSurface[i] = vrCreateCvt2YuvTarget ( pOutBuf->luStride, handle->dstWidth, handle->dstHeight, (NX_MEMORY_HANDLE)pOutBuf->privateDesc[0], 0 );
+				handle->hOutSurface[i] = nxGSurfaceCreateCvt2YuvTarget ( pOutBuf->luStride, handle->dstWidth, handle->dstHeight, (NX_MEMORY_HANDLE)pOutBuf->privateDesc[0], 0 );
 				hOutSurface = handle->hOutSurface[i];
 				handle->outputImage[i] = *pOutBuf;
 				break;
@@ -505,7 +550,7 @@ static int32_t GTServiceRgb2YuvDoConvert(NX_GT_PARAM_DO *pParam )
 	}
 
 	//	Run RGB 2 YUV 
-	vrRunCvt2Yuv (hOutSurface, hInSurface);
+	nxGSurfaceRunCvt2Yuv (hOutSurface, hInSurface);
 
 	// static void mem_save_to_file(char* pbuf, const char *filename, unsigned int width, unsigned int height)
 	//mem_save_to_file( (char*)pOutBuf->luVirAddr, "test", handle->dstWidth, handle->dstHeight);
@@ -526,11 +571,11 @@ static void GTServiceRgb2YuvClose(NX_GT_PARAM_CLOSE *pParam)
 			{
 				if( handle->inputFd[i] )
 				{
-					vrDestroyCvt2YuvSource( handle->hInSurface[i] );
+					nxGSurfaceDestroyCvt2YuvSource( handle->hInSurface[i] );
 				}
 				if( handle->outputImage[i].luPhyAddr )
 				{
-					vrDestroyCvt2YuvTarget( handle->hOutSurface[i], 0 );
+					nxGSurfaceDestroyCvt2YuvTarget( handle->hOutSurface[i], 0 );
 				}
 			}
 		}
@@ -616,7 +661,7 @@ static int32_t GTServiceYuv2RgbDoConvert(NX_GT_PARAM_DO *pParam )
 		{
 			if( 0 == handle->inputImage[i].luPhyAddr )
 			{
-				hInSurface = handle->hInSurface[i] = vrCreateCvt2RgbaSource ( pInBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pInBuf->privateDesc[0] );
+				hInSurface = handle->hInSurface[i] = nxGSurfaceCreateCvt2RgbaSource ( pInBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pInBuf->privateDesc[0] );
 				handle->inputImage[i] = *pInBuf;
 				break;
 			}
@@ -641,7 +686,7 @@ static int32_t GTServiceYuv2RgbDoConvert(NX_GT_PARAM_DO *pParam )
 			{
 				NX_MEMORY_INFO memHandle;
 				memHandle.privateDesc = (void*)outFd;
-				handle->hOutSurface[i] = vrCreateCvt2RgbaTarget ( pInBuf->luStride, handle->dstWidth, handle->dstHeight, (NX_MEMORY_HANDLE)&memHandle, 0 );
+				handle->hOutSurface[i] = nxGSurfaceCreateCvt2RgbaTarget ( pInBuf->luStride, handle->dstWidth, handle->dstHeight, (NX_MEMORY_HANDLE)&memHandle, 0 );
 				hOutSurface = handle->hOutSurface[i];
 				handle->outputFd[i] = outFd;
 				break;
@@ -650,7 +695,7 @@ static int32_t GTServiceYuv2RgbDoConvert(NX_GT_PARAM_DO *pParam )
 	}
 
 	//	Run RGB 2 YUV 
-	vrRunCvt2Rgba(hOutSurface, hInSurface);
+	nxGSurfaceRunCvt2Rgba(hOutSurface, hInSurface);
 
 	return 0;
 }
@@ -668,11 +713,11 @@ static void GTServiceYuv2RgbClose(NX_GT_PARAM_CLOSE *pParam)
 			{
 				if( handle->inputImage[i].luPhyAddr )
 				{
-					vrDestroyCvt2RgbaSource( handle->hInSurface[i] );
+					nxGSurfaceDestroyCvt2RgbaSource( handle->hInSurface[i] );
 				}
 				if( handle->outputFd[i] )
 				{
-					vrDestroyCvt2RgbaTarget( handle->hOutSurface[i], 0 );
+					nxGSurfaceDestroyCvt2RgbaTarget( handle->hOutSurface[i], 0 );
 				}
 			}
 		}
@@ -683,6 +728,145 @@ static void GTServiceYuv2RgbClose(NX_GT_PARAM_CLOSE *pParam)
 //			End of YUV to RGB Service
 //
 ////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//	NR(Noise Reduction) Filter
+//	Input  : NX_VID_MEMORY_INFO
+//	OUtput : NX_VID_MEMORY_INFO
+//
+struct NX_GT_NRFILTER_INFO {
+	int32_t isInit;
+	int32_t srcWidth;
+	int32_t srcHeight;
+	int32_t dstWidth;
+	int32_t dstHeight;
+	int32_t maxInOutBufSize;
+
+	NX_VID_MEMORY_INFO	inputImage[MAX_GRAPHIC_BUF_SIZE];		//	Input Image
+	HSURFSOURCE			hInSurface[MAX_GRAPHIC_BUF_SIZE];		//	Input Image's Surface
+
+	NX_VID_MEMORY_INFO	outputImage[MAX_GRAPHIC_BUF_SIZE];			//	Target Buffer's Ion File Descriptor
+	HSURFTARGET			hOutSurface[MAX_GRAPHIC_BUF_SIZE];		//	Target RGB Surface
+};
+
+static void *GTServiceNRFilterOpen( NX_GT_PARAM_OPEN *pParam )
+{
+	NX_GT_NRFILTER_HANDLE handle = (NX_GT_NRFILTER_HANDLE)malloc(sizeof(struct NX_GT_NRFILTER_INFO));
+	if( handle )
+	{
+		memset( handle, 0, sizeof(struct NX_GT_NRFILTER_INFO) );
+		handle->isInit		= 1;
+		handle->srcWidth	= pParam->srcWidth;
+		handle->srcHeight	= pParam->srcHeight;
+		handle->dstWidth	= pParam->dstWidth;
+		handle->dstHeight	= pParam->dstHeight;
+		handle->maxInOutBufSize = pParam->maxInOutBufSize;
+		pParam->handle 		= handle;
+
+		printf("src = %dx%d, dst = %dx%d\n", handle->srcWidth, handle->srcHeight, handle->dstWidth, handle->dstHeight);
+	}
+	return (void*)handle;
+}
+
+static int32_t GTServiceNRFilterDoConvert(NX_GT_PARAM_DO *pParam )
+{
+	int32_t i;
+	HSURFSOURCE hInSurface  = NULL;
+	HSURFTARGET hOutSurface = NULL;
+	NX_GT_NRFILTER_HANDLE handle = (NX_GT_NRFILTER_HANDLE)pParam->handle;
+
+	NX_VID_MEMORY_INFO *pInBuf = (NX_VID_MEMORY_INFO *)pParam->pInBuf;
+	NX_VID_MEMORY_INFO *pOutBuf = (NX_VID_MEMORY_INFO *)pParam->pOutBuf;
+	int outFd  = (int)pParam->pOutBuf;
+
+	if( !handle || !handle->isInit )
+	{
+		return -1;
+	}
+
+	//	Check Input Image Address
+	for( i=0 ; i<handle->maxInOutBufSize ; i++ )
+	{
+		if( handle->inputImage[i].luPhyAddr == pInBuf->luPhyAddr )
+		{
+			hInSurface = handle->hInSurface[i];
+			break;
+		}
+	}
+
+	//	If is not exist in cache, craete input surface.
+	if( hInSurface==NULL )
+	{
+		for( i=0 ; i<handle->maxInOutBufSize ; i++ )
+		{
+			if( 0 == handle->inputImage[i].luPhyAddr )
+			{
+				hInSurface = 
+				handle->hInSurface[i] = nxGSurfaceCreateYuvFilterSource ( pInBuf->luStride, handle->srcWidth, handle->srcHeight, (NX_MEMORY_HANDLE)pInBuf->privateDesc[0] );
+				handle->inputImage[i] = *pInBuf;
+				break;
+			}
+		}
+	}
+
+	//	Check output surface
+	for( i=0 ; i<handle->maxInOutBufSize ; i++ )
+	{
+		if( handle->outputImage[i].luPhyAddr == pOutBuf->luPhyAddr )
+		{
+			hOutSurface = handle->hOutSurface[i];
+			break;
+		}
+	}
+	//	Create Output Surface
+	if( hOutSurface==NULL )
+	{
+		for( i=0 ; i<handle->maxInOutBufSize ; i++ )
+		{
+			if( 0 == handle->outputImage[i].luPhyAddr )
+			{
+				hOutSurface =
+				handle->hOutSurface[i] = nxGSurfaceCreateYuvFilterTarget ( pOutBuf->luStride, handle->dstWidth, handle->dstHeight, (NX_MEMORY_HANDLE)pOutBuf->privateDesc[0], 0 );
+				handle->outputImage[i] = *pOutBuf;
+				break;
+			}
+		}
+	}
+	nxGSurfaceRunYuvFilter(hOutSurface, hInSurface, (float)pParam->options[0]);
+	return 0;
+}
+
+static void GTServiceNRFilterClose(NX_GT_PARAM_CLOSE *pParam)
+{
+	int i;
+	NX_GT_NRFILTER_HANDLE handle = (NX_GT_NRFILTER_HANDLE)pParam->handle;
+
+	if( handle )
+	{
+		if( handle->isInit )
+		{
+			for( i = 0 ; i < handle->maxInOutBufSize ; i++)
+			{
+				if( handle->inputImage[i].luPhyAddr )
+				{
+					nxGSurfaceDestroyYuvFilterSource( handle->hInSurface[i] );
+				}
+				if( handle->outputImage[i].luPhyAddr )
+				{
+					nxGSurfaceDestroyYuvFilterTarget( handle->hOutSurface[i], 0 );
+				}
+			}
+		}
+		free( handle );
+	}
+}
+//
+//			End of YUV to RGB Service
+//
+////////////////////////////////////////////////////////////////////////////////
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -714,9 +898,36 @@ typedef struct tag_NX_GT_SERVICE_CMD {
 	int32_t		retCode;
 } NX_GT_SERVICE_CMD;
 
+
+static void NX_InitializeEGL(EGLDisplay *pDisplay)
+{
+	EGLDisplay display = eglGetDisplay(vrPlatformGetNativeDispay());
+	if(display == EGL_NO_DISPLAY)
+	{
+		ErrMsg("Error: No EGL Display available at %s:%i\n", __FILE__, __LINE__);
+		return;
+	}
+
+	/* Initialize EGL. */
+	if(EGL_TRUE != eglInitialize(display, NULL, NULL))
+	{
+		EGLint iError = eglGetError();
+		ErrMsg("eglGetError(): %i (0x%.4x)\n", (int)iError, (int)iError);
+		ErrMsg("Error: Failed to initialize EGL at %s:%i\n", __FILE__, __LINE__);
+		return;
+	}
+	*pDisplay = display;
+}
+
+static void NX_TerminateEGL(EGLDisplay display)
+{
+    EGL_CHECK(eglTerminate(display));
+}
+
 void *GTServiceThread( void *arg )
 {
 	int32_t retCode = 0;
+	EGLDisplay hDisplay = EGL_NO_DISPLAY;
 	NX_GT_SERVICE_INFO	*pService	= (NX_GT_SERVICE_INFO*)arg;
 	NX_GT_SERVICE_CMD	*pCmd		= NULL;
 
@@ -733,15 +944,19 @@ void *GTServiceThread( void *arg )
 	serviceList[ GT_SERVICE_ID_SCALER      ].GTOpen  = &GTServiceSclOpen;
 	serviceList[ GT_SERVICE_ID_SCALER      ].GTDo    = &GTServiceSclDoScale;
 	serviceList[ GT_SERVICE_ID_SCALER      ].GTClose = &GTServiceSclClose;
-	serviceList[ CT_SERVICE_ID_RGB2YUV     ].GTOpen  = &GTServiceRgb2YuvOpen;
-	serviceList[ CT_SERVICE_ID_RGB2YUV     ].GTDo    = &GTServiceRgb2YuvDoConvert;
-	serviceList[ CT_SERVICE_ID_RGB2YUV     ].GTClose = &GTServiceRgb2YuvClose;
-	serviceList[ CT_SERVICE_ID_YUV2RGB     ].GTOpen  = &GTServiceYuv2RgbOpen;
-	serviceList[ CT_SERVICE_ID_YUV2RGB     ].GTDo    = &GTServiceYuv2RgbDoConvert;
-	serviceList[ CT_SERVICE_ID_YUV2RGB     ].GTClose = &GTServiceYuv2RgbClose;
+	serviceList[ GT_SERVICE_ID_RGB2YUV     ].GTOpen  = &GTServiceRgb2YuvOpen;
+	serviceList[ GT_SERVICE_ID_RGB2YUV     ].GTDo    = &GTServiceRgb2YuvDoConvert;
+	serviceList[ GT_SERVICE_ID_RGB2YUV     ].GTClose = &GTServiceRgb2YuvClose;
+	serviceList[ GT_SERVICE_ID_YUV2RGB     ].GTOpen  = &GTServiceYuv2RgbOpen;
+	serviceList[ GT_SERVICE_ID_YUV2RGB     ].GTDo    = &GTServiceYuv2RgbDoConvert;
+	serviceList[ GT_SERVICE_ID_YUV2RGB     ].GTClose = &GTServiceYuv2RgbClose;
+	serviceList[ GT_SERVICE_ID_FILTER_NR   ].GTOpen  = &GTServiceNRFilterOpen;
+	serviceList[ GT_SERVICE_ID_FILTER_NR   ].GTDo    = &GTServiceNRFilterDoConvert;
+	serviceList[ GT_SERVICE_ID_FILTER_NR   ].GTClose = &GTServiceNRFilterClose;
 
 	// GL Surface Initialize
-	vrInitializeGLSurface();
+	NX_InitializeEGL(&hDisplay);
+	nxGSurfaceCreateGraphicSurface(hDisplay);
 	
 	while( pService->bThreadRun )
 	{
@@ -779,7 +994,8 @@ void *GTServiceThread( void *arg )
 	}
 
 	// GL Surface Terminate
-	vrTerminateGLSurface();
+	nxGSurfaceDestroyGraphicSurface();
+	NX_TerminateEGL(hDisplay);
 
 	return (void*)0xDEADDEAD;
 }

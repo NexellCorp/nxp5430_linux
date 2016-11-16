@@ -13,7 +13,7 @@ include $(CLEAR_VARS)
 
 NX_HW_TOP        := $(TOP)/hardware/samsung_slsi/slsiap/
 NX_HW_INCLUDE    := $(NX_HW_TOP)/include
-NX_LINUX_INCLUDE := $(TOP)/linux/platform/s5p4418/library/include
+NX_LINUX_INCLUDE := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library/include
 
 LOCAL_SHARED_LIBRARIES :=	\
 	liblog \
@@ -38,8 +38,8 @@ LOCAL_CFLAGS := -DGL_GLEXT_PROTOTYPES=1
 LOCAL_SRC_FILES := \
 	src/nx_graphictools.cpp \
 	src/vr_egl_runtime.cpp \
-	src/vr_deinterlace_shader.cpp \
-	src/vr_deinterlace.cpp \
+	src/vr_shader.cpp \
+	src/vr_yuv_render.cpp \
 	src/NX_Queue.cpp \
 	src/NX_Semaphore.cpp \
 	src/NX_GTService.cpp \
@@ -59,7 +59,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 NX_HW_TOP        := $(TOP)/hardware/samsung_slsi/slsiap/
 NX_HW_INCLUDE    := $(NX_HW_TOP)/include
-NX_LINUX_INCLUDE := $(TOP)/linux/platform/s5p4418/library/include
+NX_LINUX_INCLUDE := $(TOP)/linux/platform/$(TARGET_CPU_VARIANT2)/library/include
 
 LOCAL_SHARED_LIBRARIES :=	\
 	liblog \
@@ -75,7 +75,8 @@ LOCAL_STATIC_LIBRARIES :=	\
 LOCAL_C_INCLUDES :=	$(TOP)/system/core/include/ion \
 					$(NX_HW_INCLUDE) \
 					$(LOCAL_PATH)/src \
-					$(NX_LINUX_INCLUDE)
+					$(NX_LINUX_INCLUDE) \
+					$(LOCAL_PATH)/include/khronos
 
 LOCAL_CFLAGS := 
 

@@ -16,12 +16,25 @@
 #include <nx_fourcc.h>
 #include <nx_alloc_mem.h>
 #include <nx_graphictools.h>
-#include "src/vr_deinterlace.h"
-#include "src/vr_egl_runtime.h"
 
 #include "src/dbgmsg.h"
 
 #define	ALIGNED16(X)	(((X+15)>>4)<<4)
+
+static uint64_t time_get_usec(void)
+{
+	int32_t result;
+	struct timeval tod;
+
+	result = gettimeofday(&tod, NULL);
+
+	/* gettimeofday returns non-null on error*/
+	if (0 != result) return 0;
+
+	return ((uint64_t)tod.tv_sec) * 1000000ULL + tod.tv_usec;
+}
+
+
 
 void print_usage(const char *appName)
 {
@@ -335,6 +348,7 @@ ErrorExit:
 //	Implementation Mode 99 ( Dinterlace -> Scaling Asing Test )
 //
 
+
 static int AGING_TEST( const char *inFileName, int srcWidth, int srcHeight, const char *outFileName, int dstWidth, int dstHeight )
 {
 	unsigned int counter = 0;
@@ -355,7 +369,7 @@ static int AGING_TEST( const char *inFileName, int srcWidth, int srcHeight, cons
 
 	while( 1 )
 	{
-		time_start = (unsigned int)base_util_time_get_usec();
+		time_start = (unsigned int)time_get_usec();
 
 		counter++;
 		printf("Loop Counter : %d\n", counter);
@@ -391,7 +405,7 @@ static int AGING_TEST( const char *inFileName, int srcWidth, int srcHeight, cons
 		hDeint = NULL;
 		hScale = NULL;
 
-		time_end = (unsigned int)base_util_time_get_usec();
+		time_end = (unsigned int)time_get_usec();
 		//if(!(counter % 100))
 		DbgMsg("[%5i]----TIME. %5i us\n", counter, time_end-time_start);
 	}
