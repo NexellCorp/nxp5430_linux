@@ -28,6 +28,11 @@
 
 #include "NX_CCmdQueue.h"
 
+#define HDMI_X_RES	1920
+#define HDMI_Y_RES	1080
+
+#define FULL_SCREEN
+
 typedef struct AppDataStruct {
 	MP_HANDLE 		hPlayer;
 	MP_MEDIA_INFO	MediaInfo;
@@ -90,7 +95,7 @@ static void signal_handler( int sig )
 
 	NX_MPStop( AppData.hPlayer );
 	NX_MPClose( AppData.hPlayer );
-		
+
 	AppData.bThreadExit = true;
 	exit( EXIT_FAILURE );
 }
@@ -174,11 +179,13 @@ static void GetVideoResolution( int32_t trackNum, int32_t *width, int32_t *heigh
 
 static void GetVideoPosition( int32_t dspPort, int32_t trackNum, int32_t *x, int32_t *y, int32_t *width, int32_t *height )
 {
+#ifndef FULL_SCREEN
 	double xRatio, yRatio;
+#endif
 
 	int32_t scrWidth = 0, scrHeight = 0;
 	int32_t vidWidth = 0, vidHeight = 0;
-	
+
 	*x = *y = *width = *height = 0;
 
 	GetVideoResolution( trackNum, &vidWidth, &vidHeight );
@@ -189,10 +196,16 @@ static void GetVideoPosition( int32_t dspPort, int32_t trackNum, int32_t *x, int
 	}
 	else
 	{
-		scrWidth	= 1920;
-		scrHeight	= 1080;
+		scrWidth	= HDMI_X_RES;
+		scrHeight	= HDMI_Y_RES;
 	}
 
+#ifdef FULL_SCREEN
+	*x = 0;
+	*y = 0;
+	*width = scrWidth;
+	*height = scrHeight;
+#else
 	xRatio = (double)scrWidth / (double)vidWidth;
 	yRatio = (double)scrHeight / (double)vidHeight;
 
@@ -200,7 +213,7 @@ static void GetVideoPosition( int32_t dspPort, int32_t trackNum, int32_t *x, int
 	{
 		*width = vidWidth * yRatio;
 		*height = scrHeight;
-		
+
 		*x = abs( scrWidth - *width ) / 2;
 		*y = 0;
 	}
@@ -208,10 +221,11 @@ static void GetVideoPosition( int32_t dspPort, int32_t trackNum, int32_t *x, int
 	{
 		*width = scrWidth;
 		*height = vidHeight * xRatio;
-		
+
 		*x = 0;
 		*y = abs( scrHeight - *height ) / 2;
 	}
+#endif
 
 	printf("VideoPosition( %d, %d, %d, %d )\n", *x, *y, *width, *height );
 }
@@ -220,16 +234,16 @@ static int32_t PrintMediaInfo( MP_MEDIA_INFO *pMediaInfo )
 {
 	printf("--------------------------------------------------------------------------------\n");
 	printf("* Media Information\n" );
-	printf(" -. ProgramNum( %d ), VideoTrack( %d ), AudioTrack( %d ), SubTitleTrack( %d ), DataTrack( %d )\n\n", 
+	printf(" -. ProgramNum( %d ), VideoTrack( %d ), AudioTrack( %d ), SubTitleTrack( %d ), DataTrack( %d )\n\n",
 		pMediaInfo->iProgramNum, pMediaInfo->iVideoTrackNum, pMediaInfo->iAudioTrackNum, pMediaInfo->iSubTitleTrackNum, pMediaInfo->iDataTrackNum );
 
 	for( int32_t i = 0; i < pMediaInfo->iProgramNum; i++ )
 	{
 		printf("--------------------------------------------------------------------------------\n");
 		printf("[ PROGRAM #%d ]\n", i );
-		printf(" -. VideoNum( %d ), AudioNum( %d ), SubTitleNum( %d ), DataNum( %d ), Duration( %lld )\n\n", 
+		printf(" -. VideoNum( %d ), AudioNum( %d ), SubTitleNum( %d ), DataNum( %d ), Duration( %lld )\n\n",
 			pMediaInfo->ProgramInfo[i].iVideoNum, pMediaInfo->ProgramInfo[i].iAudioNum, pMediaInfo->ProgramInfo[i].iSubTitleNum, pMediaInfo->ProgramInfo[i].iDataNum, pMediaInfo->ProgramInfo[i].iDuration);
-		
+
 		if( 0 < pMediaInfo->ProgramInfo[i].iVideoNum )
 		{
 			int32_t num = 0;
@@ -238,7 +252,7 @@ static int32_t PrintMediaInfo( MP_MEDIA_INFO *pMediaInfo )
 			for( int32_t j = 0; j < pMediaInfo->ProgramInfo[i].iVideoNum + pMediaInfo->ProgramInfo[i].iAudioNum; j++ )
 			{
 				MP_TRACK_INFO *pTrackInfo = &pMediaInfo->ProgramInfo[i].TrackInfo[j];
-				
+
 				if( MP_TRACK_VIDEO == pTrackInfo->iTrackType ) {
 					printf(" Video Track #%d\n", num++);
 					printf("  -. Track Index : %d\n", pTrackInfo->iTrackIndex);
@@ -298,7 +312,7 @@ static void cbEventCallback( void *privateDesc, unsigned int EventType, unsigned
 		{
 			NX_MPStop( pAppData->hPlayer );
 			NX_MPClose( pAppData->hPlayer );
-		
+
 			pAppData->bThreadExit = true;
 			exit(1);
 		}
@@ -310,7 +324,7 @@ static void cbEventCallback( void *privateDesc, unsigned int EventType, unsigned
 		{
 			NX_MPStop( pAppData->hPlayer );
 			NX_MPClose( pAppData->hPlayer );
-		
+
 			pAppData->bThreadExit = true;
 			exit(1);
 		}
@@ -351,18 +365,18 @@ void *HdmiDetectThread( void *arg )
 	uevent_init();
 	fds.fd		= uevent_get_fd();
 	fds.events	= POLLIN;
-	
+
 	while( !pAppData->bThreadExit )
 	{
 		int32_t err = poll( &fds, 1, 1000 );
 
 		if( err > 0 )
-		{ 
+		{
 			if( fds.revents & POLLIN )
 			{
 				uevent_next_event((char *)desc, sizeof(desc));
 				desc[ sizeof(desc)-1 ] = 0x00;
-				
+
 				if( !strcmp((const char *)desc, (const char *)"change@/devices/virtual/switch/hdmi") )
 				{
 					memset( &cmd, 0x00, sizeof(cmd) );
@@ -381,7 +395,7 @@ int32_t StartHdmiDetect( void )
 	if( AppData.hHdmiThread ) {
 		return -1;
 	}
-	
+
 	if( 0 != pthread_create( &AppData.hHdmiThread, NULL, HdmiDetectThread, (void*)&AppData ) ) {
 		printf("Fail, Create Thread.\n");
 		return -1;
@@ -439,7 +453,7 @@ static void *CmdThread( void *arg )
 
 						MP_DSP_CONFIG dspConf;
 						memset( &dspConf, 0x00, sizeof(dspConf) );
-						
+
 						int32_t x, y, width, height;
 
 						dspConf.iPort	= DISPLAY_PORT_HDMI;
@@ -475,7 +489,7 @@ static void *CmdThread( void *arg )
 			default:
 				break;
 		}
-	}		
+	}
 
 	return (void*)0xDEADDEAD;
 }
@@ -487,9 +501,9 @@ static int32_t StartCmdThread( void )
 	{
 		return -1;
 	}
-	
-	if( 0 != pthread_create( &AppData.hCmdThread, NULL, CmdThread, (void*)&AppData ) ) 
-	{	
+
+	if( 0 != pthread_create( &AppData.hCmdThread, NULL, CmdThread, (void*)&AppData ) )
+	{
 		printf("Fail, Create Thread.\n");
 		return -1;
 	}
@@ -527,8 +541,8 @@ int32_t main( int32_t argc, char *argv[] )
 	printf("############################## Example ##############################\n");
 	printf(" Default   ==>  ./NxPlayerConsole -f test_file.mp4\n");
     printf(" Set Audio Path\n");
-	printf("  - I2S Audio  ==>  ./NxPlayerConsole -f test_file.mp4 -s 0\n");
-    printf("  - HDMI Audio ==>  ./NxPlayerConsole -f test_file.mp4 -s 1\n");
+	printf("  - I2S Audio  ==>  ./NxPlayerConsole -f test_file.mp4 -a 0\n");
+    printf("  - HDMI Audio ==>  ./NxPlayerConsole -f test_file.mp4 -a 1\n");
 	printf("######################################################################\n");
 	memset( &AppData, 0x00, sizeof(AppDataStruct) );
 
@@ -545,11 +559,11 @@ int32_t main( int32_t argc, char *argv[] )
 			default:
 				break;
 		}
-	}	
+	}
 
 	AppData.pCmdQueue 	= new NX_CCmdQueue();
 	StartCmdThread();
-	
+
 	int32_t iVersion		= NX_MPGetVersion();
 	int32_t iMajorVersion 	= (iVersion & 0XFF000000) >> 24;
 	int32_t iMinorVersion 	= (iVersion & 0x00FF0000) >> 16;
@@ -589,7 +603,7 @@ int32_t main( int32_t argc, char *argv[] )
 		NX_MPClose( AppData.hPlayer );
 		return -1;
 	}
-	
+
 	memset( &AppData.MediaInfo, 0x00, sizeof(MP_MEDIA_INFO) );
 	NX_MPGetMediaInfo( AppData.hPlayer, &AppData.MediaInfo );
 	PrintMediaInfo( &AppData.MediaInfo );
@@ -607,16 +621,16 @@ int32_t main( int32_t argc, char *argv[] )
 		int32_t x, y, width, height;
 
 		// Primary Display
-		dspConf.iPort	= DISPLAY_PORT_LCD;	
+		dspConf.iPort	= DISPLAY_PORT_LCD;
 		dspConf.iModule	= DISPLAY_MODULE_MLC0;
 
 		GetVideoPosition( dspConf.iPort, 0, &x, &y, &width, &height );
-		
+
 		dspConf.dstRect.iX			= x;
 		dspConf.dstRect.iY			= y;
 		dspConf.dstRect.iWidth		= width;
 		dspConf.dstRect.iHeight		= height;
-		
+
 		NX_DspVideoSetPriority(DISPLAY_MODULE_MLC0, 0);
 		NX_MPAddTrack( AppData.hPlayer, AppData.iVideoIndex, &dspConf );
 
@@ -654,7 +668,7 @@ int32_t main( int32_t argc, char *argv[] )
 
 	NX_MPPlay( AppData.hPlayer );
 	NX_MPGetDuration( AppData.hPlayer, &duration );
-	
+
 	StartHdmiDetect();
 
 	while( !AppData.bThreadExit )
