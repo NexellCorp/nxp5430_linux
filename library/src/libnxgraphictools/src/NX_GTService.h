@@ -26,8 +26,9 @@
 enum {
 	GT_SERVICE_ID_DEINTERLACE	= 0,
 	GT_SERVICE_ID_SCALER		= 1,
-	CT_SERVICE_ID_RGB2YUV		= 2,	//	RGB32 to NV12
-	CT_SERVICE_ID_YUV2RGB		= 3,	//	YUV to RGB32
+	GT_SERVICE_ID_RGB2YUV		= 2,	//	RGB32 to NV12
+	GT_SERVICE_ID_YUV2RGB		= 3,	//	YUV to RGB32
+	GT_SERVICE_ID_FILTER_NR		= 4,	//	Noise Reduction Filter
 };
 
 enum {
@@ -51,9 +52,10 @@ typedef struct tag_NX_GT_PARAM_OPEN {
 } NX_GT_PARAM_OPEN;
 
 typedef struct tag_NX_GT_PARAM_DO {
-	void 	*handle;		//	context handler
-	void 	*pInBuf;
-	void	*pOutBuf;
+	void 		*handle;		//	context handler
+	void 		*pInBuf;
+	void		*pOutBuf;
+	uint32_t	options[4];		//	Option Parameters
 } NX_GT_PARAM_DO;
 
 typedef struct tag_NX_GT_PARAM_CLOSE {
@@ -64,8 +66,12 @@ typedef struct tag_NX_GT_PARAM_CLOSE {
 extern "C" {
 #endif	//	__cplusplus
 
-// NX_GTServiceInit() -> NX_GTServiceStart() -> NX_GTServiceCommand() -> ... -> NX_GTServiceCommand() -> NX_GTServiceStop() -> NX_GTServiceDeinit()
-
+//
+//	Use Sequence :
+//		NX_GTServiceInit() -> NX_GTServiceStart() -> NX_GTServiceCommand() ->
+//		... 
+//		NX_GTServiceCommand() -> NX_GTServiceStop() -> NX_GTServiceDeinit()
+//
 NX_GT_SERVICE_HANDLE	NX_GTServiceInit	( void );
 void					NX_GTServiceDeinit	( NX_GT_SERVICE_HANDLE hService );
 int32_t					NX_GTServiceStart	( NX_GT_SERVICE_HANDLE hService );
