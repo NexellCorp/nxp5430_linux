@@ -66,7 +66,7 @@ CNX_AndroidRenderer::~CNX_AndroidRenderer()
 {
 }
 
-int32_t CNX_AndroidRenderer::GetBuffers( int32_t iNumBuf, int32_t iImgWidth, int32_t iImgHeight, NX_VID_MEMORY_HANDLE **pMemHandle )
+int32_t CNX_AndroidRenderer::GetBuffers( int32_t iNumBuf, int32_t iImgWidth, int32_t iImgHeight, int32_t iDspWidth, int32_t iDspHeight, NX_VID_MEMORY_HANDLE **pMemHandle )
 {
 	int32_t err;
 	sp<ANativeWindow> yuvWindow(m_YuvSurfaceControl->getSurface());
@@ -113,6 +113,14 @@ int32_t CNX_AndroidRenderer::GetBuffers( int32_t iNumBuf, int32_t iImgWidth, int
 	}
 	*pMemHandle = &m_MemoryHandles[0];
 	m_YuvWindow = yuvWindow;
+
+    android_native_rect_t crop;
+    crop.left = 0;
+    crop.top = 0;
+    crop.right = iDspWidth;
+    crop.bottom = iDspHeight;
+
+	native_window_set_crop(m_YuvWindow.get(), &crop);
 	return 0;
 }
 

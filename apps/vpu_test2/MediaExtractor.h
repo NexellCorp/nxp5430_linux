@@ -69,12 +69,14 @@ public:
 		return false;
 	}
 
-	bool GetVideoResolution( int32_t *width, int32_t *height )
+	bool GetVideoResolution( int32_t *imgWidth, int32_t *imgHeight, int32_t *dspWidth, int32_t *dspHeight )
 	{
 		if( m_VideoStream )
 		{
-			*width = m_VideoStream->codec->coded_width;
-			*height = m_VideoStream->codec->coded_height;
+			*imgWidth = m_VideoStream->codec->coded_width;
+			*imgHeight = m_VideoStream->codec->coded_height;
+			*dspWidth = m_VideoStream->codec->width;
+			*dspHeight = m_VideoStream->codec->height;
 			return true;
 		}
 		return false;

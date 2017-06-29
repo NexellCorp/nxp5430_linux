@@ -56,6 +56,7 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 	int32_t mp4Class=0;
 	int32_t codecTag=-1, codecId=-1;
 	int32_t imgWidth=-1, imgHeight=-1;
+	int32_t dspWidth=-1, dspHeight=-1;
 	int32_t instanceIdx;
 	int32_t brokenB = 0;
 	int32_t iPrevIdx = -1;
@@ -78,7 +79,7 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 		printf("Cannot open media file(%s)\n", pAppData->inFileName);
 		exit(-1);
 	}
-	pMediaReader->GetVideoResolution(&imgWidth, &imgHeight);
+	pMediaReader->GetVideoResolution(&imgWidth, &imgHeight, &dspWidth, &dspHeight);
 
 	if( pAppData->outFileName )
 	{
@@ -88,7 +89,7 @@ int32_t VpuDecMain( CODEC_APP_DATA *pAppData )
 #ifdef ANDROID
 	CNX_AndroidRenderer *pAndRender = new CNX_AndroidRenderer(WINDOW_WIDTH, WINDOW_HEIGHT);
 	NX_VID_MEMORY_HANDLE *pMemHandle;
-	pAndRender->GetBuffers(NUMBER_OF_BUFFER, imgWidth, imgHeight, &pMemHandle );
+	pAndRender->GetBuffers(NUMBER_OF_BUFFER, imgWidth, imgHeight, dspWidth, dspHeight, &pMemHandle );
 	NX_VID_MEMORY_HANDLE hVideoMemory[NUMBER_OF_BUFFER];
 	for( int32_t i=0 ; i<NUMBER_OF_BUFFER ; i++ )
 	{

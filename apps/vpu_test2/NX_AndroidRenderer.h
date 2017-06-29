@@ -18,7 +18,7 @@ public:
 	CNX_AndroidRenderer( int32_t iWndWidth, int32_t iWndHeight );
 	virtual ~CNX_AndroidRenderer();
 
-	int32_t GetBuffers( int32_t iNumBuf, int32_t iImgWidth, int32_t iImgHeight, NX_VID_MEMORY_HANDLE **pMemHandle );
+	int32_t GetBuffers( int32_t iNumBuf, int32_t iImgWidth, int32_t iImgHeight, int32_t iDspWidth, int32_t iDspHeight, NX_VID_MEMORY_HANDLE **pMemHandle );
 	int32_t DspQueueBuffer( NX_VID_MEMORY_HANDLE hHandle, int32_t index );
 	int32_t DspDequeueBuffer( NX_VID_MEMORY_HANDLE *hHandle, int32_t *index );
 
